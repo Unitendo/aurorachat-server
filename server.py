@@ -1,4 +1,4 @@
-from flask import Flask, jsonify, request, send_from_directory
+from flask import Flask, jsonify, request, send_from_directory, send_file
 from flask import render_template
 from flask import session, redirect, url_for
 from flask_socketio import SocketIO, emit
@@ -14,8 +14,11 @@ import hashlib
 import threading
 import socket
 from dotenv import load_dotenv
+import requests
 
 import syscmd
+
+import base64
 
 # --- Configuration ---
 load_dotenv()
@@ -40,6 +43,7 @@ BANNEDIP_DIR = os.path.join(SCRIPT_DIR, "bannedips")
 ADMIN_DIR = os.path.join(SCRIPT_DIR, "admins")
 KNOWNUSR_DIR = os.path.join(SCRIPT_DIR, "knownusers")
 TAG_DIR = os.path.join(SCRIPT_DIR, "usertags")
+CDN_DIR = os.path.join(SCRIPT_DIR, "cdn")
 
 os.makedirs(ACCOUNT_DIR, exist_ok=True)
 os.makedirs(BANNEDUSR_DIR, exist_ok=True)
@@ -48,6 +52,7 @@ os.makedirs(ACCOUNTIPS_DIR, exist_ok=True)
 os.makedirs(ADMIN_DIR, exist_ok=True)
 os.makedirs(KNOWNUSR_DIR, exist_ok=True)
 os.makedirs(TAG_DIR, exist_ok=True)
+os.makedirs(CDN_DIR, exist_ok=True)
 
 # virt u put this globalization here and its horrifying (-orstando)
 # global userCount
@@ -102,6 +107,7 @@ def start_tcp_server():
         tcp_clients.append(client_sock)
         global userCount
         userCount += 1
+        broadcast(f"USERCOUNT,{userCount}")
         t = threading.Thread(target=handle_tcp_client, args=(client_sock,), daemon=True)
         t.start()
 
@@ -231,6 +237,7 @@ def processMessage(client,data):
                 usernameWithIdentifier = f"({data['platform']}){tag}{typeIdentifier[0]}{client.username}{typeIdentifier[1]}"
                 
                 censored_msg = profanity.censor(data['content'].strip(), '*')
+                censored_msg = repr(censored_msg)
                 if not checkAdmin(client.username):
                   now = int(time.time() * 1000)
                   last_msg = rate_limit.get(client, 0)
@@ -241,7 +248,12 @@ def processMessage(client,data):
                 if len(censored_msg) > MAX_MESSAGE_LENGTH:
                       return {'data':"TOOLONG",'limit':str(MAX_MESSAGE_LENGTH)}
                 latestMsg = f"{usernameWithIdentifier}: {data['content']}\n"
-                broadcast(f"{usernameWithIdentifier}: {censored_msg}\n")
+                decoded = base64.b64decode(data['imgdata'])
+                if len(decoded) < 50000:
+                    with open(os.path.join(CDN_DIR, "image.png"), 'wb') as file:
+                         file.write(decoded)
+                
+                broadcast(f"CHAT|{client.username}|{censored_msg}|{data['pnid']}|http://104.236.25.60:3073/cdn/image.png")
                 syscmd.checkCmd(client.username,data['content'],broadcast)
                 return {'data':"MSG_SENT"}
           else:
@@ -254,13 +266,6 @@ def handleClient(address, data):
             client = Client()
             now_ms = int(time.time() * 1000)
             last_connection = connection_times.get(address, 0)
-            if now_ms - last_connection < RATE_LIMIT_MS:
-                  try:
-                        with open(filepath, 'wb') as f:
-                              f.write("Too many connections at once")
-                  except Exception:
-                        pass
-                  return
             connection_times[address] = now_ms
             clients[address] = client
             if not LATEST_VERSION in data['version']:
@@ -280,6 +285,16 @@ def error405():
 @app.route('/')
 def rootRedirect():
       return redirect('/api')
+
+@app.route('/mii/<miidata>')
+def process_req(miidata):
+    response = requests.get(f"https://mii-unsecure.ariankordi.net/miis/image.png?nnid={miidata}&api_id=1&shaderType=ffliconwithbody&type=face&width=48&resourceType=low")
+    with open(os.path.join(CDN_DIR, "mii.png"), 'wb') as f:
+        f.write(response.content)
+    
+    return send_file(os.path.join(CDN_DIR, "mii.png"), as_attachment=True)
+
+     
 
 # --- Main Server Logic ---
 
@@ -308,6 +323,10 @@ def process_request():
 def auoraweb():
     return render_template('auroraweb.html')
 
+@app.route('/cdn/<filename>')
+def serve_file(filename):
+    return send_from_directory(CDN_DIR, filename)
+
 
 @app.route('/admin/login', methods=['GET', 'POST'])
 def admin_login():
@@ -331,7 +350,7 @@ def admin():
     if not session.get('admin'):
         return redirect('/admin/login')
     return '''
-    <form method="POST" action="/ban">
+    <form method="POST" action="/admin/ban">
         <input name="value" id="value" placeholder="Username to ban" required><br>
         <input name="reason" id="reason" placeholder="Ban reason"><br id="reasonbr">
         <select name="type" id="type" onchange="change()">
@@ -344,12 +363,12 @@ def admin():
         </select><br>
         <button id="submit">Ban User</button>
     </form>
+    <a href="/admin/ipbanfromusr">Ban an IP based on username</a>
     <script>
     function change() {
         if (document.getElementById("type").value == "user") {
             if (document.getElementById("mode").value == "ban") {
-                document.getElementById("submit").innerHTML = "Ban User";
-                document.getElementById("value").setAttribute('placeholder','Username to ban');
+                document.getElementById("submit").innerHTML = "Ban User";                document.getElementById("value").setAttribute('placeholder','Username to ban');
                 document.getElementById("reason").style.display="inline";
                 document.getElementById("reasonbr").style.display="inline"
             } else if (document.getElementById("mode").value == "unban") {
@@ -375,7 +394,23 @@ def admin():
     </script>
     '''
 
-@app.route('/ban', methods=['POST'])
+@app.route('/admin/ipbanfromusr', methods=['GET', 'POST'])
+def ipcheck():
+    if not session.get('admin'):
+        return 'Unauthorized', 403
+    if request.method == 'POST':
+        value = request.form['value']
+        with open(os.path.join(ACCOUNTIPS_DIR, value)) as f:
+            url = url_for('/admin/ban', value=f.read(), type='ip', mode='ban')
+            return redirect(url)
+
+    return '''
+           <form method="POST">
+               <input name='value' placeholder='username'>
+               <button id='submit'>Submit</button>
+           </form>
+           '''
+@app.route('/admin/ban', methods=['POST'])
 def ban_user():
     if not session.get('admin'):
         return 'Unauthorized', 403
