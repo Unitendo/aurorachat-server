@@ -1,51 +1,37 @@
 import os
-SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-KNOWNUSR_DIR = os.path.join(SCRIPT_DIR, "knownusers") # at some point this should be merged with the normal account files
 
 broadcast = None
 msg = None
+user = None
 
-def send(msg,prefix="~System Message~ [SYSTEM]: "): # Message wrapper
+def send(msg,prefix="*[SYSTEM]*: "): # Message wrapper
    global broadcast
-   broadcast(prefix+msg)
+   broadcast(prefix+msg+"\n")
 
-def info():
-   send("Type /rules to see the rules,")
-   send("and /discord to get a link to our Discord server.", prefix="")
+def info(user,msg):
+   send("Press Y to see the rules,")
+   send("along with an FAQ and a link to our Discord server.", prefix="")
 
-import random
-def rules(user):
-   global KNOWNUSR_DIR
-   filepath = os.path.join(KNOWNUSR_DIR, user) # 0% chance of silly rules on first time
-   with open(filepath, "r+") as f:
-      data = f.read()
-      f.seek(0)
-      f.write('knownrules')
-      f.truncate()
-   silly = False
-   if data == 'knownrules':
-      if random.randint(1, 100) <= 10:
-         silly = True
-   if silly == False:
-      send("Rules: press Y to read them. Be nice.")
-   else:
-      send("Rules (silly): no")
-
-def discord():
-   send("Want access to the rest of Unitendo? Join our official Discord server here:")
-   send("https://discord.gg/dCSgz7KERv", prefix="")
+def welcomeMsg(user, msg, db, cursor):
+   cursor.execute("SELECT known FROM users WHERE uname = ?", (user,))
+   known = cursor.fetchone()[0]
+   if not known:
+      cursor.execute("UPDATE users SET known = ? WHERE uname = ?", (True,user))
+      db.commit()
+      send(f"{user}, type /info if you're new!")
 
 def cmd(cmd,func,args=[],kwargs={}): # Command wrapper
-   global msg
+   global user, msg
    if msg.startswith(cmd):
-      return func(*args, **kwargs)
+      return func(user, msg, *args, **kwargs)
 
-# Custom commands (other than /ban, /unban, and the welcome message) go here
-def cmdSetup(user,msgarg,broadcastarg):
-   global broadcast,msg
+# Custom commands (other than /ban and /unban) go here
+def cmdSetup(userarg,msgarg,broadcastarg,db,cursor):
+   global broadcast,msg,user
    broadcast = broadcastarg
    msg = msgarg
+   user = userarg
+
+   welcomeMsg(user,msg,db,cursor)
 
    cmd("/info", info)
-   cmd("/rules", rules, args=[user])
-   cmd("/discord", discord)

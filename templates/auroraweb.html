@@ -77,9 +77,11 @@
 
   <script>
 
-    var usrname = "goon";
-    var pass = "goon";
-
+    var usrname = "placeholder";
+    var pass = "placeholder";
+    var VERSION = "{{version}}"
+    var socketUrl = window.location.protocol+"//"+window.location.host
+    var httpUrl = socketUrl+"/api"
 
     function makeaccount(usrname3, pass3) {
     console.log("Requesting account creation...");
@@ -89,7 +91,7 @@
         return;
     }
 
-    fetch('http://104.236.25.60:3072/api', {
+    fetch(httpUrl, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -108,8 +110,9 @@
     })
     .then(data => {
         console.log('Success:', data);
+        loginaccount(document.getElementById('username').value, document.getElementById('password').value);
+        document.getElementById('chat').style.display = 'block';
         document.getElementById('signup').style.display = "none";
-        document.getElementById('login').style.display = "block";
     })
     .catch(error => {
         console.error('Error:', error);
@@ -118,13 +121,12 @@
 
       function loginaccount(usrname3, pass3) {
     console.log("Requesting login...");
-
     if (!usrname3 || !pass3) {
         console.error("Username or password is missing");
         return;
     }
 
-    fetch('http://104.236.25.60:3072/api', {
+    fetch(httpUrl, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -152,7 +154,7 @@
 }
 
     function sendmessage(tosend) {
-        fetch('http://104.236.25.60:3072/api', {
+        fetch(httpUrl, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -164,18 +166,18 @@
         .catch(error => console.error('Error:', error));
     }
 
-    const socket = io('http://104.236.25.60:3072');
+    const socket = io(socketUrl);
 
     socket.on('connect', () => {
       console.log('Connected via Socket.IO');
     });
 
-    fetch('http://104.236.25.60:3072/api', {
+    fetch(httpUrl, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ cmd: 'CONNECT', version: '4.3' })
+        body: JSON.stringify({ cmd: 'CONNECT', version: VERSION})
     })
     .then(response => response.json())
     .then(data => console.log('Success:', data))
@@ -187,7 +189,18 @@
       msg.value = "";
     }
   });
-
+    document.getElementById('password').addEventListener('keydown', function(event) {
+    if (event.key === 'Enter') {
+      makeaccount(document.getElementById('username').value, document.getElementById('password').value)
+    }
+  });
+    document.getElementById('password2').addEventListener('keydown', function(event) {
+    if (event.key === 'Enter') {
+      loginaccount(document.getElementById('username2').value, document.getElementById('password2').value);
+      document.getElementById('chat').style.display = 'block';
+      document.getElementById('login').style.display = 'none';
+    }
+  });
     socket.on('message', (data) => {
       const msg = document.createElement('div');
       msg.textContent = typeof data === 'object' ? JSON.stringify(data) : data;
