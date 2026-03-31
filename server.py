@@ -13,6 +13,7 @@ import threading
 import socket
 from dotenv import load_dotenv
 import sqlite3
+import json
 
 import syscmd
 
@@ -29,6 +30,7 @@ PASSWORD_MAX_CHARS = int(os.getenv('AUC_PASSWORD_MAX_CHARS'))
 TERMINATION_TRIGGER = os.getenv('AUC_TERMINATION_TRIGGER')
 FLASK_SECRET_KEY = os.getenv('AUC_FLASK_SECRET_KEY')
 RAWCHAT_KEY = os.getenv('AUC_RAWCHAT_KEY')
+DISALLOWED_USERNAMES = os.getenv('AUC_DISALLOWED_USERNAMES').split("|")
 
 
 userdb = sqlite3.connect("users.db", check_same_thread=False)
@@ -165,6 +167,9 @@ def makeAccount(client, data, ip):
             if "\\" in username or "/" in username or " " in username or len(username) > USERNAME_MAX_CHARS:
                  print(f"Illegal username: '{username}'")
                  return {'data':'ILLEGAL'}
+            if any(item in username for item in DISALLOWED_USERNAMES):
+                 print(f"Disallowed username: '{username}'")
+                 return {'data':'ILLEGAL'}
             if len(password) > PASSWORD_MAX_CHARS:
                  print("Illegal password, exceeded char limit.")
                  return {'data':'ILLEGAL'}
@@ -252,6 +257,7 @@ def processMessage(client,data, ip):
                 usernameWithIdentifier = f"({data['platform']}){tag}{typeIdentifier[0]}{client.username}{typeIdentifier[1]}"
                 
                 censored_msg = profanity.censor(data['content'].strip(), '*')
+                censored_msg = repr(censored_msg).strip("'")
                 if not checkAdmin(client.username):
                   now = int(time.time() * 1000)
                   last_msg = rate_limit.get(client, 0)
