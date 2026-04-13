@@ -113,7 +113,7 @@ rate_limit = {}
 connection_times = {}
 msg_lock = threading.Lock()
 
-profanity.load_censor_words(custom_wordlist=["nigger", "nigga", "fag", "faggot"])
+profanity.load_censor_words(custom_wordlist=["nigger", "nigga", "fag", "faggot", "penis", "tits", "dick", "sex"])
 
 app = Flask(__name__)
 
