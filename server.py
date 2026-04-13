@@ -113,8 +113,7 @@ rate_limit = {}
 connection_times = {}
 msg_lock = threading.Lock()
 
-profanity.load_censor_words(whitelist_words=['yaoi', 'gay', 'lamo', 'frick', 'crap', 'fuck', 'god', 'shit', 'heck', 'hell', 'ass', 'stupid', 'murder', 'uzi', 'weed', 'piss', 'kill'])
-profanity.add_censor_words(["67"])
+profanity.load_censor_words(custom_wordlist=["nigger", "nigga", "fag", "faggot"])
 
 app = Flask(__name__)
 
