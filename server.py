@@ -415,26 +415,29 @@ def rootRedirect():
 def process_request():
     request_json = request.get_json(silent=True)
     if not request_json:
-        print(request.data)
         return {"data": "NO_JSON"}, 400
-    if request_json["cmd"] == "CONNECT":
-        response = handleClient(request.remote_addr, request_json)
-    elif request_json["cmd"] == "MAKEACC":
-        response = makeAccount(
-            clients[request.remote_addr], request_json, request.remote_addr
-        )
-    elif request_json["cmd"] == "LOGINACC":
-        response = loginAccount(
-            clients[request.remote_addr], request_json, request.remote_addr
-        )
-    elif request_json["cmd"] in ["CHAT", "BOTCHAT", "INTCHAT", "RAWCHAT"]:
-        response = processMessage(
-            clients[request.remote_addr], request_json, request.remote_addr
-        )
+
+    ip = request.remote_addr
+    cmd = request_json.get("cmd")
+    if cmd == "CONNECT":
+        return handleClient(ip, request_json)
+
+    # Make sure client exists for any command other than CONNECT
+    client = clients.get(ip)
+    if not client:
+        return {'data': 'NOT_CONNECTED'}, 400
+
+    if cmd == "MAKEACC":
+        return makeAccount(client, request_json, ip)
+
+    elif cmd == "LOGINACC":
+        return loginAccount(client, request_json, ip)
+
+    elif cmd in ["CHAT", "BOTCHAT", "INTCHAT", "RAWCHAT"]:
+        return processMessage(client, request_json, ip)
+
     else:
-        print("Command not recognized.")
-        response = {"data": "BADCMD"}
-    return response
+        return {"data": "BADCMD"}, 400
 
 
 # Grab auroraweb
