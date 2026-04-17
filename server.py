@@ -29,8 +29,16 @@ USERNAME_MAX_CHARS = int(os.getenv('AUC_USERNAME_MAX_CHARS', 25))
 PASSWORD_MAX_CHARS = int(os.getenv('AUC_PASSWORD_MAX_CHARS', 40))
 FLASK_SECRET_KEY = os.getenv('AUC_FLASK_SECRET_KEY', "")
 RAWCHAT_KEY = os.getenv('AUC_RAWCHAT_KEY', "")
-DISALLOWED_USERNAMES = (os.getenv('AUC_DISALLOWED_USERNAMES') or "").split("|")
-DISALLOWED_WORDS = (os.getenv('AUC_DISALLOWED_WORDS') or "").split("|")
+DISALLOWED_USERNAMES = [
+    u.strip()
+    for u in (os.getenv('AUC_DISALLOWED_USERNAMES') or "").split("|")
+    if u.strip()
+]
+DISALLOWED_WORDS = [
+    w.strip()
+    for w in (os.getenv('AUC_DISALLOWED_WORDS') or "").split("|")
+    if w.strip()
+]
 
 
 userdb = sqlite3.connect("users.db", check_same_thread=False)
