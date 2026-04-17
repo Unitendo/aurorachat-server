@@ -398,20 +398,31 @@ def getCss():
 @app.route('/admin/login', methods=['GET','POST'])
 def admin_login():
     if request.method == 'POST':
-        dbcursor.execute("SELECT type FROM admins WHERE uname = ?", (request.form['username'],))
-        admintype = dbcursor.fetchone()[0]
-        if admintype:
-            dbcursor.execute("SELECT hashedpw FROM users WHERE uname = ?", (request.form['username'],))
-            try:
-                stored_hash = dbcursor.fetchone()[0]
-            except TypeError:
-                stored_hash = ""
-            if bcrypt.checkpw(request.form['password'].encode('utf-8'), stored_hash):
-                if admintype == "staff":
-                    session['staff'] = True
-                session['admin'] = True
-                return redirect('/admin')
+        username = request.form['username']
+        password = request.form['password']
+
+        dbcursor.execute("SELECT type FROM admins WHERE uname = ?", (username,))
+        row = dbcursor.fetchone()
+        if not row:
+            return 'Invalid username or password', 401
+
+        admintype = row[0]
+
+        dbcursor.execute("SELECT hashedpw FROM users WHERE uname = ?", (username,))
+        row = dbcursor.fetchone()
+        if not row:
+            return 'Invalid username or password', 401
+
+        stored_hash = row[0]
+
+        if bcrypt.checkpw(password.encode('utf-8'), stored_hash):
+            if admintype == "staff":
+                session['staff'] = True
+            session['admin'] = True
+            return redirect('/admin')
+
         return 'Invalid username or password', 401
+
     return '''
     <form method="POST">
         <input type="text" name="username" placeholder="Username" required>
