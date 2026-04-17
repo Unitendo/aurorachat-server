@@ -19,18 +19,18 @@ import syscmd
 
 # --- Configuration ---
 load_dotenv()
-HOST = os.getenv('HOST')
-HTTP_PORT = int(os.getenv('AUC_HTTP_PORT'))
-TCP_PORT = int(os.getenv('AUC_TCP_PORT'))
-LATEST_VERSION = os.getenv('AUC_LATEST_VERSION')
-RATE_LIMIT_MS = int(os.getenv('AUC_RATE_LIMIT_MS'))
-MAX_MESSAGE_LENGTH = int(os.getenv('AUC_MAX_MESSAGE_LENGTH'))
-USERNAME_MAX_CHARS = int(os.getenv('AUC_USERNAME_MAX_CHARS'))
-PASSWORD_MAX_CHARS = int(os.getenv('AUC_PASSWORD_MAX_CHARS'))
-TERMINATION_TRIGGER = os.getenv('AUC_TERMINATION_TRIGGER')
-FLASK_SECRET_KEY = os.getenv('AUC_FLASK_SECRET_KEY')
-RAWCHAT_KEY = os.getenv('AUC_RAWCHAT_KEY')
-DISALLOWED_USERNAMES = os.getenv('AUC_DISALLOWED_USERNAMES').split("|")
+LATEST_VERSION = float(os.getenv('AUC_LATEST_VERSION', 4.5))
+HOST = os.getenv('AUC_HOST', "0.0.0.0")
+HTTP_PORT = int(os.getenv('AUC_HTTP_PORT', 3072))
+TCP_PORT = int(os.getenv('AUC_TCP_PORT', 4040))
+RATE_LIMIT_MS = int(os.getenv('AUC_RATE_LIMIT_MS', 1998))
+MAX_MESSAGE_LENGTH = int(os.getenv('AUC_MAX_MESSAGE_LENGTH', 457))
+USERNAME_MAX_CHARS = int(os.getenv('AUC_USERNAME_MAX_CHARS', 25))
+PASSWORD_MAX_CHARS = int(os.getenv('AUC_PASSWORD_MAX_CHARS', 40))
+FLASK_SECRET_KEY = os.getenv('AUC_FLASK_SECRET_KEY', "")
+RAWCHAT_KEY = os.getenv('AUC_RAWCHAT_KEY', "")
+DISALLOWED_USERNAMES = (os.getenv('AUC_DISALLOWED_USERNAMES') or "").split("|")
+DISALLOWED_WORDS = (os.getenv('AUC_DISALLOWED_WORDS') or "").split("|")
 
 
 userdb = sqlite3.connect("users.db", check_same_thread=False)
@@ -113,7 +113,8 @@ rate_limit = {}
 connection_times = {}
 msg_lock = threading.Lock()
 
-profanity.load_censor_words(custom_wordlist=["nigger", "nigga", "fag", "faggot"])
+profanity.load_censor_words()
+profanity.add_censor_words(DISALLOWED_WORDS)
 
 app = Flask(__name__)
 
@@ -187,10 +188,6 @@ def loginAccount(client,data, ip):
       if all(key in data for key in ['username','password']): # Make sure username and password exist
             username = data['username']
             password = data['password']
-            if TERMINATION_TRIGGER in username:
-                  return {'data':"UNAMETRIGGER"}
-                  print("Termination trigger detected.")
-                  raise ConnectionResetError(f"Forced disconnect due to client's name being {username}.")
             if not checkBan("user",username):
                   dbcursor.execute("SELECT hashedpw FROM users WHERE uname = ?", (username,))
                   try:

@@ -1,68 +1,52 @@
-# Prerequisites
-*.d
-
-# Object files
-*.o
-*.ko
-*.obj
-
-# Linker output
-*.ilk
-*.map
-*.exp
-
-# Precompiled Headers
-*.gch
-*.pch
-
-# Libraries
-*.lib
-*.a
-*.la
-*.lo
-
-# Shared objects (inc. Windows DLLs)
-*.dll
-*.so
-*.so.*
-*.dylib
-
-# Build stuff
-build/
-*.cia
-*.icn
-*.bnr
-*.smdh
-*.3dsx
-*.elf
-*.t3x
-
-# Debug files
-*.dSYM/
-*.su
-*.idb
-*.pdb
-
-# Kernel Module Compile Results
-*.mod*
-*.cmd
-.tmp_versions/
-modules.order
-Module.symvers
-Mkfile.old
-dkms.conf
-
-# debug information files
-*.dwo
-
-# other stuff
+# --- Environment / Secrets ---
 .env
-.ssh
-.bash_history
-.my_name_is_the_fucking_mimic_oh_yeah
-# SSL files
-*.pem
-*.key
-# my copy of siivagunner king for another day
-*.mp3
-*.mp4
+.env.*
+*.env
+
+# --- Python cache ---
+**pycache**/
+*.py[cod]
+*$py.class
+
+# --- Virtual environments ---
+venv/
+.venv/
+env/
+ENV/
+
+# --- Database files ---
+*.db
+*.sqlite
+*.sqlite3
+
+# --- Logs ---
+*.log
+
+# --- OS files ---
+.DS_Store
+Thumbs.db
+
+# --- Editor / IDE ---
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# --- Flask / session ---
+instance/
+*.pid
+
+# --- Build / dist ---
+build/
+dist/
+*.egg-info/
+
+# --- Coverage / testing ---
+.coverage
+htmlcov/
+.pytest_cache/
+
+# --- Misc ---
+*.bak
+*.tmp
+maintenanceMode_Active.conf
