@@ -236,10 +236,8 @@ def loginAccount(client, data, ip):
         password = data["password"]
         if not checkBan("user", username):
             dbcursor.execute("SELECT hashedpw FROM users WHERE uname = ?", (username,))
-            try:
-                hashedpw = dbcursor.fetchone()[0]
-            except TypeError:
-                hashedpw = None
+            row = dbcursor.fetchone()
+            hashedpw = row[0] if row else None
             if hashedpw:
                 if bcrypt.checkpw(password.encode("utf-8"), hashedpw):
                     print(f"User '{username}' logged in with IP '{ip}'")
@@ -293,10 +291,9 @@ def processMessage(client, data, ip):
             dbcursor.execute(
                 "SELECT tag FROM usertags WHERE uname = ?", (client.username,)
             )
-            try:
-                tag = dbcursor.fetchone()[0]
-            except TypeError:
-                pass
+            row = dbcursor.fetchone()
+            if row:
+                tag = row[0]
             if tag != " ":
                 tag = f" ~{tag.strip()}~ "
             elif checkAdmin(client.username):
@@ -424,7 +421,7 @@ def process_request():
     # Make sure client exists for any command other than CONNECT
     client = clients.get(ip)
     if not client:
-        return {'data': 'NOT_CONNECTED'}, 400
+        return {"data": "NOT_CONNECTED"}, 400
 
     if cmd == "MAKEACC":
         return makeAccount(client, request_json, ip)
@@ -448,13 +445,20 @@ def auoraweb():
 @app.route("/stats")
 def getStats():
     dbcursor.execute("SELECT COUNT(*) FROM users")
-    userCount = dbcursor.fetchone()[0]
+    row = dbcursor.fetchone()
+    userCount = row[0] if row else 0
+
     dbcursor.execute("SELECT COUNT(*) FROM bannedusers")
-    bannedUserCount = dbcursor.fetchone()[0]
+    row = dbcursor.fetchone()
+    bannedUserCount = row[0] if row else 0
+
     dbcursor.execute("SELECT COUNT(*) FROM bannedips")
-    bannedIpCount = dbcursor.fetchone()[0]
+    row = dbcursor.fetchone()
+    bannedIpCount = row[0] if row else 0
+
     dbcursor.execute("SELECT COUNT(*) FROM admins")
-    adminCount = dbcursor.fetchone()[0]
+    row = dbcursor.fetchone()
+    adminCount = row[0] if row else 0
     return f"""
         <p>Stats</p><br>
         <p>Users: {str(userCount)}</p>
@@ -485,14 +489,12 @@ def admin_login():
         row = dbcursor.fetchone()
         if not row:
             return "Invalid username or password", 401
-
         admintype = row[0]
 
         dbcursor.execute("SELECT hashedpw FROM users WHERE uname = ?", (username,))
         row = dbcursor.fetchone()
         if not row:
             return "Invalid username or password", 401
-
         stored_hash = row[0]
 
         if bcrypt.checkpw(password.encode("utf-8"), stored_hash):
@@ -608,7 +610,10 @@ def banIpFromUsername():
         dbcursor.execute(
             "SELECT ip FROM users WHERE uname = ?", (request.form["username"],)
         )
-        ip = dbcursor.fetchone()[0]
+        row = dbcursor.fetchone()
+        if not row:
+            return "User not found", 404
+        ip = row[0]
         if request.form["mode"] == "ban":
             dbcursor.execute(
                 f"INSERT INTO bannedips (ip,reason) VALUES (?,?)",
@@ -725,7 +730,10 @@ def getIp():
         dbcursor.execute(
             "SELECT ip FROM users WHERE uname = ?", (request.form["username"],)
         )
-        result = dbcursor.fetchone()[0]
+        row = dbcursor.fetchone()
+        if not row:
+            return "User not found", 404
+        result = row[0]
         return f"<link rel='stylesheet' href='/style.css'><p>IP of {request.form['username']}: {result}</p><a href='/staff'>Back to staff panel</a>"
     return """
         <link rel='stylesheet' href='/style.css'>
