@@ -344,24 +344,38 @@ def processMessage(client, data, ip):
 
 # --- Client Handling ---
 def handleClient(ip, data):
-    if not checkBan("ip", ip):
-        client = Client()
-        now_ms = int(time.time() * 1000)
-        last_connection = connection_times.get(ip, 0)
-        if now_ms - last_connection < RATE_LIMIT_MS:
-            print(f"Too many connections at once from IP '{ip}'")
-            return
-        connection_times[ip] = now_ms
-        clients[ip] = client
-        if not LATEST_VERSION in data["version"]:
-            print(f"Connection established with an outdated client from IP '{ip}'.")
-            return {"data": "CONNECT_OK", "info": "OUTDATED"}
-        if LATEST_VERSION in data["version"]:
-            print(f"Client connection established from IP '{ip}'.")
-            return {"data": "CONNECT_OK"}
-    else:
+    if checkBan("ip", ip):
         print(f"A banned IP tried to connect: '{ip}'")
         return {"data": "BANNED"}
+
+    now_ms = int(time.time() * 1000)
+    last_connection = connection_times.get(ip, 0)
+
+    if now_ms - last_connection < RATE_LIMIT_MS:
+        print(f"Too many connections from IP '{ip}'")
+        return {"data": "RATE_LIMIT"}
+
+    connection_times[ip] = now_ms
+
+    client = Client()
+    clients[ip] = client
+
+    version = data.get("version")
+
+    if version is None:
+        return {"data": "NO_VERSION"}
+
+    try:
+        version = float(version)
+    except:
+        return {"data": "BAD_VERSION"}
+
+    if version != LATEST_VERSION:
+        print(f"Outdated client from IP '{ip}'.")
+        return {"data": "CONNECT_OK", "info": "OUTDATED"}
+
+    print(f"Client connection established from IP '{ip}'.")
+    return {"data": "CONNECT_OK"}
 
 
 # remove trailing slash (https://stackoverflow.com/a/40365514)
