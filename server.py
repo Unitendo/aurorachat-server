@@ -18,7 +18,6 @@ import os.path
 import os
 import bcrypt
 import hashlib
-import threading
 import socket
 from dotenv import load_dotenv
 import sqlite3
