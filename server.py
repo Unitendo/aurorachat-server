@@ -316,9 +316,9 @@ def processMessage(client, data, ip):
             if len(censored_msg) > MAX_MESSAGE_LENGTH:
                 return {"data": "TOOLONG", "limit": str(MAX_MESSAGE_LENGTH)}
             if censored_msg.startswith("/ban ip "):  # redact ips
-                censored_msg == "/ban ip [redacted]"
+                censored_msg = "/ban ip [redacted]"
             if censored_msg.startswith("/unban ip "):
-                censored_msg == "/unban ip [redacted]"
+                censored_msg = "/unban ip [redacted]"
             if maintenance:
                 if checkAdmin(client.username):
                     broadcast(f"{usernameWithIdentifier}: {censored_msg}\n")
