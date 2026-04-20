@@ -224,8 +224,8 @@ def makeAccount(client, data, ip):
             print(f"Account '{username}' created")
             return {"data": "USR_CREATED"}
         else:
-            return {"data": "USR_IN_USE"}
             print(f"Account creation attempt when it already existed: '{username}'")
+            return {"data": "USR_IN_USE"}
 
 
 def loginAccount(client, data, ip):
@@ -266,8 +266,8 @@ def processMessage(client, data, ip):
     if data["cmd"] == "RAWCHAT":
         if data["rawkey"] == RAWCHAT_KEY:
             broadcast(f"{data['content']}\n")
-            return {"data": "MSG_SENT"}
             print(f"Message sent with RAWCHAT by IP '{ip}': '{data['content']}'")
+            return {"data": "MSG_SENT"}
         else:
             print(f"IP '{ip}' tried to utilize RAWCHAT without the key.")
             return {"data": "INVALID_KEY"}
