@@ -29,8 +29,8 @@ import syscmd
 load_dotenv()
 LATEST_VERSION = float(os.getenv("AUC_LATEST_VERSION", 4.5))
 HOST = os.getenv("AUC_HOST", "0.0.0.0")
-HTTP_PORT = int(os.getenv("AUC_HTTP_PORT", 8080))
-TCP_PORT = int(os.getenv("AUC_TCP_PORT", 4040))
+HTTP_PORT = int(os.getenv("AUC_HTTP_PORT", 8080)) # Changed to 8080 for cloudflare, not 80 because Main unitendo site uses it
+TCP_PORT = int(os.getenv("AUC_TCP_PORT", 8880)) # Changed to 8880 also for cloudflare
 RATE_LIMIT_MS = int(os.getenv("AUC_RATE_LIMIT_MS", 1998))
 MAX_MESSAGE_LENGTH = int(os.getenv("AUC_MAX_MESSAGE_LENGTH", 457))
 USERNAME_MAX_CHARS = int(os.getenv("AUC_USERNAME_MAX_CHARS", 25))
