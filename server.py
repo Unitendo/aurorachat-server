@@ -29,7 +29,7 @@ import syscmd
 load_dotenv()
 LATEST_VERSION = float(os.getenv("AUC_LATEST_VERSION", 4.5))
 HOST = os.getenv("AUC_HOST", "0.0.0.0")
-HTTP_PORT = int(os.getenv("AUC_HTTP_PORT", 3072))
+HTTP_PORT = int(os.getenv("AUC_HTTP_PORT", 8080))
 TCP_PORT = int(os.getenv("AUC_TCP_PORT", 4040))
 RATE_LIMIT_MS = int(os.getenv("AUC_RATE_LIMIT_MS", 1998))
 MAX_MESSAGE_LENGTH = int(os.getenv("AUC_MAX_MESSAGE_LENGTH", 457))
@@ -118,7 +118,7 @@ def start_tcp_server():
     server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     server.bind(("0.0.0.0", TCP_PORT))
     server.listen(5)
-    print("AuroraTCP running on port 4040")
+    print(f"AuroraTCP running on port {TCP_PORT}")
 
     while True:
         client_sock, addr = server.accept()
@@ -250,13 +250,10 @@ def loginAccount(client, data, ip):
                     broadcast(f"*[SYSTEM]*: {username} has joined the chat.\n")
                     return {"data": "LOGIN_OK"}
                 else:
-                    print("Invalid password.")
                     return {"data": "LOGIN_WRONG_PASS"}, 401
             else:
-                print("Account not found.")
                 return {"data": "LOGIN_FAKE_ACC"},401
         else:
-            print("you're BANNED. LOSER")
             return {"data": "BANNED"}, 403
 
 
