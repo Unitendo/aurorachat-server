@@ -225,7 +225,7 @@ def makeAccount(client, data, ip):
             return {"data": "USR_CREATED"}
         else:
             print(f"Account creation attempt when it already existed: '{username}'")
-            return {"data": "USR_IN_USE"}
+            return {"data": "USR_IN_USE"}, 409
 
 
 def loginAccount(client, data, ip):
@@ -251,13 +251,13 @@ def loginAccount(client, data, ip):
                     return {"data": "LOGIN_OK"}
                 else:
                     print("Invalid password.")
-                    return {"data": "LOGIN_WRONG_PASS"}
+                    return {"data": "LOGIN_WRONG_PASS"}, 401
             else:
                 print("Account not found.")
-                return {"data": "LOGIN_FAKE_ACC"}
+                return {"data": "LOGIN_FAKE_ACC"},401
         else:
             print("you're BANNED. LOSER")
-            return {"data": "BANNED"}
+            return {"data": "BANNED"}, 403
 
 
 def processMessage(client, data, ip):
@@ -268,18 +268,18 @@ def processMessage(client, data, ip):
             return {"data": "MSG_SENT"}
         else:
             print(f"IP '{ip}' tried to utilize RAWCHAT without the key.")
-            return {"data": "INVALID_KEY"}
+            return {"data": "INVALID_KEY"}, 403
     else:
         if client.loggedin:
             if len(data["platform"]) > 30:
-                return {"data": "ILLEGAL"}
+                return {"data": "ILLEGAL; PLATFORM TOO LONG"}, 400
 
             if checkBan("user", client.username):
                 print(f"A banned user '{client.username}' tried to send a message.")
-                return {"data": "BANNED"}
+                return {"data": "BANNED"}, 403
             if checkBan("ip", ip):
                 print(f"A banned IP '{ip}' tried to send a message.")
-                return {"data": "BANNED"}
+                return {"data": "BANNED"}, 403
 
             if data["cmd"] == "CHAT":
                 typeIdentifier = "<>"
@@ -339,14 +339,14 @@ def processMessage(client, data, ip):
                 )
             return {"data": "MSG_SENT"}
         else:
-            return {"data": "NO_LOGIN"}
+            return {"data": "NO_LOGIN"}, 401
 
 
 # --- Client Handling ---
 def handleClient(ip, data):
     if checkBan("ip", ip):
         print(f"A banned IP tried to connect: '{ip}'")
-        return {"data": "BANNED"}
+        return {"data": "BANNED"}, 403
 
     now_ms = int(time.time() * 1000)
     last_connection = connection_times.get(ip, 0)
@@ -363,12 +363,12 @@ def handleClient(ip, data):
     version = data.get("version")
 
     if version is None:
-        return {"data": "NO_VERSION"}
+        return {"data": "NO_VERSION"}, 400
 
     try:
         version = float(version)
     except:
-        return {"data": "BAD_VERSION"}
+        return {"data": "BAD_VERSION"}, 400
 
     if version != LATEST_VERSION:
         print(f"Outdated client from IP '{ip}'.")
