@@ -18,6 +18,7 @@ ENV/
 *.db
 *.sqlite
 *.sqlite3
+users.json
 
 # --- Logs ---
 *.log

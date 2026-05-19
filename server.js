@@ -13,8 +13,17 @@ const USERS_FILE = path.join(__dirname, 'users.json');
 const SECRET_KEY = 'ENTER YOUR KEY HERE';
 
 function readUsers() {
-  const data = fs.readFileSync(USERS_FILE);
-  return JSON.parse(data);
+  try {
+    if (!fs.existsSync(USERS_FILE)) {
+      return { users: [], admins: [] };
+    }
+
+    const data = fs.readFileSync(USERS_FILE, 'utf8');
+    return JSON.parse(data);
+  } catch (err) {
+    console.error("Failed to read users.json:", err);
+    return { users: [], admins: [] };
+  }
 }
 
 function writeUsers(data) {
