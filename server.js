@@ -147,7 +147,9 @@ app.post('/api/rooms', checkBan, (req, res) => {
   res.status(200).send(responseString);
   console.log("Sent room list");
 });
-
+if (true) {
+  console.log("true");
+}
 /*
 Send a message
 
@@ -282,13 +284,13 @@ app.post('/admin/login', async (req, res) => {
   const {username, password} = req.body;
   const users = readUsers();
   const user = users.admins.find(user => user.username === username);
-  if (!await bcrypt.compare(password, user.password)) {
+  if (!user || !(await bcrypt.compare(password, user.password))) {
     console.log("Wrong password");
-    return res.status(403).send(`<p><a href="https://www.youtube.com/watch?v=dWX8Kafsc3c">Wrong password.</a></p><a href='/admin/login'>Go back</a>`);
+    return res.status(403).send(`<p><a href="https://www.youtube.com/watch?v=dWX8Kafsc3c">Wrong username or password.</a></p><a href='/admin/login'>Go back</a>`);
   }
 
   if (!user) {
-    return res.status(403).send(`<p><a href="https://www.youtube.com/watch?v=dWX8Kafsc3c">User does not exist.</a></p><a href='/admin/login'>Go back</a>`);
+    return res.status(403).send(`<p><a href="https://www.youtube.com/watch?v=dWX8Kafsc3c">Wrong username or password.</a></p><a href='/admin/login'>Go back</a>`);
   }
 
   req.session.admin = true;
