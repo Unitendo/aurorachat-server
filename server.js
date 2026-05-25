@@ -247,12 +247,8 @@ app.post('/api/login', checkBan, async (req, res) => {
     return res.send("ERR_WRONG_PASS");
   }
 
-  if (user) {
-    if (user.banned) {
-      return res.status(200).send("ERR_BANNED");
-    }
-  } else {
-    return res.status(200).send("ERR_FAKE_USER");
+  if (user.banned) {
+    return res.status(200).send("ERR_BANNED");
   }
 
   const token = jwt.sign({ id: user.id, username }, TOKEN_SECRET, { expiresIn: '1h' });
@@ -284,10 +280,6 @@ app.post('/admin/login', async (req, res) => {
   const user = users.admins.find(user => user.username === username);
   if (!user || !(await bcrypt.compare(password, user.password))) {
     console.log("Wrong password");
-    return res.status(403).send(`<p><a href="https://www.youtube.com/watch?v=dWX8Kafsc3c">Wrong password.</a></p><a href='/admin/login'>Go back</a>`);
-  }
-
-  if (!user) {
     return res.status(403).send(`<p><a href="https://www.youtube.com/watch?v=dWX8Kafsc3c">Wrong password.</a></p><a href='/admin/login'>Go back</a>`);
   }
 
