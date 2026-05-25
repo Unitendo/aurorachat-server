@@ -5,17 +5,30 @@ const bcrypt = require('bcryptjs'); // BCrypt, used for hashing passwords
 const jwt = require('jsonwebtoken'); // JSON Web Token, used for authentication instead of manually using IPs (stupid behavior)
 const path = require('path'); // Wait, what?
 const fs = require('fs'); // Filesystem actions
+const websocket = require('ws'); // WebSocket server, for the web client
 
+const TOKEN_SECRET = "replace with a randomly generated string"; // JWT secret key
+const SESSION_SECRET = "replace with a (different) randomly generated string"; // Secret key for admin panel cookies
+const HTTP_PORT = 6767;
+const SOCKET_PORT = 3033;
+const WEBSOCKET_PORT = 3034;
 
 const app = express(); // Create the actual server (the express one anyway)
 app.use(express.text()); // Make sure to accept raw text because JSON parsing in base C is hell
-const USERS_FILE = path.join(__dirname, 'users.json'); // Must be created prior otherwise error
-const SECRET_KEY = 'Put a key here, idiot.'; // JWT secret key
+const USERS_FILE = path.join(__dirname, 'users.json');
 
 // Read the users file
 function readUsers() {
-  const data = fs.readFileSync(USERS_FILE);
-  return JSON.parse(data);
+  try {
+    if (!fs.existsSync(USERS_FILE)) {
+      return { users: [], admins: [] };
+    }
+    const data = fs.readFileSync(USERS_FILE);
+    return JSON.parse(data);
+  } catch (err) {
+    console.error("Failed to read users.json:", err);
+    return { users: [], admins: [] };
+  }
 }
 
 // Write to the users file
@@ -38,13 +51,13 @@ const roomCount = rooms.length;
 // Client storage, keeps track of all sockets.
 const clients = [];
 
-const server = net.createServer((socket) => {
+const socket_server = net.createServer((socket) => {
   const {ip, port} = socket.address;
   console.log(`[${socket.remoteAddress}] Client connected`);
   clients.push(socket);
 
   socket.on('data', (data) => {
-    console.log(`${socket.remoteAddress} tried sending data (Murder him)`);
+    console.log(`${socket.remoteAddress} tried sending data (Murder him): ${data}`);
   });
 
   socket.on('end', () => {
@@ -57,8 +70,29 @@ const server = net.createServer((socket) => {
 });
 
 // Start up the TCP server
-server.listen(3033, () => {
-  console.log(`AuroraTCP listening on port 3033`);
+socket_server.listen(SOCKET_PORT, () => {
+  console.log(`AuroraTCP listening on port ${SOCKET_PORT}`);
+});
+
+// Websocket server
+const ws_server = new websocket.Server({ port: WEBSOCKET_PORT, clientTracking: true }, () => {
+  console.log(`AuroraWSS listening on port ${WEBSOCKET_PORT}`);
+});
+// WSS connection handling
+ws_server.on('connection', (ws, req) => {
+  console.log(`[${req.socket.remoteAddress}] Client connected`);
+
+  ws.on('message', (data) => {
+    console.log(`${req.socket.remoteAddress} tried sending data (Murder him): ${data}`);
+  });
+
+  ws.on('close', (code, reason) => {
+    console.log(`[${req.socket.remoteAddress}] Client disconnected`);
+  });
+
+  ws.on('error', (err) => {
+    console.log(`[${req.socket.remoteAddress}] error: ${err.message}`);
+  });
 });
 
 // Verify the JWT token provided by the client
@@ -71,7 +105,7 @@ function verifyToken(req, res, next) {
   }
 
   try {
-    const decoded = jwt.verify(token, SECRET_KEY);
+    const decoded = jwt.verify(token, TOKEN_SECRET);
     req.user = decoded;
     next();
   } catch (err) {
@@ -102,7 +136,7 @@ app.use('/web', express.static('web'));
 // Unused, simple API test
 app.post('/api/test', checkBan, (req, res) => {
   res.set('Content-Type', 'text/plain');
-  res.send('Online');
+  res.status(200).send('Online');
   console.log("Client requested API status");
 });
 
@@ -154,6 +188,9 @@ app.post('/api/chat', verifyToken, checkBan, async (req, res) => {
   clients.forEach(client => {
     client.write(`${req.user.username}|${req.body}|\n`);
   });
+  ws_server.clients.forEach(ws => {
+    ws.send(`${req.user.username}|${req.body}|\n`);
+  });
   return res.status(200).send("OK");
 });
 
@@ -186,9 +223,9 @@ app.post('/api/signup', checkBan, async (req, res) => {
   users.users.push(newUser);
   writeUsers(users);
 
-  const token = jwt.sign({ id: newUser.id, username }, SECRET_KEY, { expiresIn: '3h' });
-  console.log("Account created!")
-  res.status(200).send(`${token}`);
+  const token = jwt.sign({ id: newUser.id, username }, TOKEN_SECRET, { expiresIn: '1h' });
+  console.log("Account created!");
+  return res.status(200).send(`${token}`);
 });
 
 /*
@@ -218,21 +255,21 @@ app.post('/api/login', checkBan, async (req, res) => {
     return res.status(200).send("ERR_FAKE_USER");
   }
 
-  const token = jwt.sign({ id: user.id, username }, SECRET_KEY, { expiresIn: '1h' });
+  const token = jwt.sign({ id: user.id, username }, TOKEN_SECRET, { expiresIn: '1h' });
   console.log("Client logged in!");
-  res.status(200).send(`${token}|\n`);
+  return res.status(200).send(`${token}|\n`);
 });
 
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use(session({
-    secret: 'Enter your own token, idiot.',
+    secret: SESSION_SECRET,
     resave: false,
     saveUninitialized: false,
     cookie: { secure: false }
 }));
 
-app.get('/hidden-secret/admin/login', async (req, res) => {
+app.get('/admin/login', async (req, res) => {
   res.send(`
     <form method="POST">
         <input name="username" placeholder="Username" required />
@@ -241,17 +278,17 @@ app.get('/hidden-secret/admin/login', async (req, res) => {
     </form>
     `);
 });
-app.post('/hidden-secret/admin/login', async (req, res) => {
+app.post('/admin/login', async (req, res) => {
   const {username, password} = req.body;
   const users = readUsers();
   const user = users.admins.find(user => user.username === username);
   if (!user || !(await bcrypt.compare(password, user.password))) {
     console.log("Wrong password");
-    return res.status(403).send(`<p>Wrong password.</p><a href='/hidden-secret/admin/login'>Go back</a>`);
+    return res.status(403).send(`<p>Wrong password.</p><a href='/admin/login'>Go back</a>`);
   }
 
   if (!user) {
-    return res.status(403).send(`<p>Wrong password.</p><a href='/hidden-secret/admin/login'>Go back</a>`);
+    return res.status(403).send(`<p>Wrong password.</p><a href='/admin/login'>Go back</a>`);
   }
 
   req.session.admin = true;
@@ -259,12 +296,12 @@ app.post('/hidden-secret/admin/login', async (req, res) => {
     req.session.staff = true;
   }
 
-  return res.redirect("/hidden-secret/admin");
+  return res.redirect("/admin");
 });
 
-app.get('/hidden-secret/admin', async (req, res) => {
+app.get('/admin', async (req, res) => {
   if (!req.session.admin) {
-    return res.redirect("/hidden-secret/admin/login");
+    return res.redirect("/admin/login");
   }
   res.send(`
     <html>
@@ -284,19 +321,19 @@ app.get('/hidden-secret/admin', async (req, res) => {
       </head>
       <body>
         <h2>User Negative Actions</h2>
-        <a style='color: red;' href='/hidden-secret/admin/ban'>Ban User</a><br>
-        <a style='color: red;' href='/hidden-secret/admin/delete'>Delete User</a><br>
+        <a style='color: red;' href='/admin/ban'>Ban User</a><br>
+        <a style='color: red;' href='/admin/delete'>Delete User</a><br>
         <h2>User Positive Actions</h2>
-        <a style='color: green;' href='/hidden-secret/admin/createAccount'>Create Account</a><br>
-        <a style='color: blue;' href='/hidden-secret/admin/userinfo'>Check User Information</a><br>
+        <a style='color: green;' href='/admin/createAccount'>Create Account</a><br>
+        <a style='color: blue;' href='/admin/userinfo'>Check User Information</a><br>
       </body>
     </html>
   `);
 });
 
-app.get('/hidden-secret/admin/ban', async (req, res) => {
+app.get('/admin/ban', async (req, res) => {
   if (!req.session.admin) {
-    return res.redirect("/hidden-secret/admin/login");
+    return res.redirect("/admin/login");
   }
   return res.send(`
     <html>
@@ -322,9 +359,9 @@ app.get('/hidden-secret/admin/ban', async (req, res) => {
   `);
 });
 
-app.post('/hidden-secret/admin/ban', async (req, res) => {
+app.post('/admin/ban', async (req, res) => {
   if (!req.session.admin) {
-    return res.redirect("/hidden-secret/admin/login");
+    return res.redirect("/admin/login");
   }
   const {username} = req.body;
   const users = readUsers();
@@ -336,13 +373,13 @@ app.post('/hidden-secret/admin/ban', async (req, res) => {
 
   return res.send(`
     <p>User banned!</p>
-    <a href="/hidden-secret/admin">Go back</a>
+    <a href="/admin">Go back</a>
     `);
 });
 
-app.get('/hidden-secret/admin/delete', async (req, res) => {
+app.get('/admin/delete', async (req, res) => {
   if (!req.session.admin) {
-    return res.redirect("/hidden-secret/admin/login");
+    return res.redirect("/admin/login");
   }
   return res.send(`
     <html>
@@ -368,9 +405,9 @@ app.get('/hidden-secret/admin/delete', async (req, res) => {
   `);
 });
 
-app.post('/hidden-secret/admin/delete', async (req, res) => {
+app.post('/admin/delete', async (req, res) => {
   if (!req.session.admin) {
-    return res.redirect("/hidden-secret/admin/login");
+    return res.redirect("/admin/login");
   }
   const {username} = req.body;
   const users = readUsers();
@@ -379,13 +416,13 @@ app.post('/hidden-secret/admin/delete', async (req, res) => {
 
   return res.send(`
     <p>User deleted!</p>
-    <a href="/hidden-secret/admin">Go back</a>
+    <a href="/admin">Go back</a>
     `);
 });
 
-app.get('/hidden-secret/admin/createAccount', async (req, res) => {
+app.get('/admin/createAccount', async (req, res) => {
   if (!req.session.admin) {
-    return res.redirect("/hidden-secret/admin/login");
+    return res.redirect("/admin/login");
   }
   return res.send(`
     <html>
@@ -412,9 +449,9 @@ app.get('/hidden-secret/admin/createAccount', async (req, res) => {
   `);
 });
 
-app.post('/hidden-secret/admin/createAccount', async (req, res) => {
+app.post('/admin/createAccount', async (req, res) => {
   if (!req.session.admin) {
-    return res.redirect("/hidden-secret/admin/login");
+    return res.redirect("/admin/login");
   }
   const {username, password} = req.body;
   
@@ -430,14 +467,14 @@ app.post('/hidden-secret/admin/createAccount', async (req, res) => {
   writeUsers(users);
 
   return res.send(`
-    <p>User CREATED ! </p>
-    <a href="/hidden-secret/admin">Go back</a>
+    <p>User created!</p>
+    <a href="/admin">Go back</a>
     `);
 });
 
-app.get('/hidden-secret/admin/userinfo', async (req, res) => {
+app.get('/admin/userinfo', async (req, res) => {
   if (!req.session.admin) {
-    return res.redirect("/hidden-secret/admin/login");
+    return res.redirect("/admin/login");
   }
   return res.send(`
     <html>
@@ -463,9 +500,9 @@ app.get('/hidden-secret/admin/userinfo', async (req, res) => {
   `);
 });
 
-app.post('/hidden-secret/admin/userinfo', async (req, res) => {
+app.post('/admin/userinfo', async (req, res) => {
   if (!req.session.admin) {
-    return res.redirect("/hidden-secret/admin/login");
+    return res.redirect("/admin/login");
   }
   const {username} = req.body;
   
@@ -474,10 +511,10 @@ app.post('/hidden-secret/admin/userinfo', async (req, res) => {
 
   return res.send(`
     <p>Username: ${user.username}<br>Password Hash: ${user.password}<br>ID: ${user.id}<br>Banned: ${user.banned}</p>
-    <a href="/hidden-secret/admin">Go back</a>
+    <a href="/admin">Go back</a>
     `);
 });
 
-app.listen(6767, () => {
-  console.log('AuroraHTTP running on port 6767');
+app.listen(HTTP_PORT, () => {
+  console.log(`AuroraHTTP running on port ${HTTP_PORT}`);
 });

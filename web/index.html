@@ -1,0 +1,800 @@
+<!-- Aurorachat Web Client -->
+<!-- v6 dev version, currently WIP -->
+
+<html>
+  <head>
+    <meta property="og:title" content="AuC v6 Web Client">
+    <meta property="og:description" content="Web client for Aurorachat v6">
+    <meta property="og:image" content="https://github.com/Unitendo/aurorachat-3ds/blob/main/meta/banner.png?raw=true">
+    <title>AuC v6 Web Client</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
+
+    <style>
+      /* Google Fonts setup */
+      .roboto-font {
+        font-family: "Roboto", sans-serif;
+        font-optical-sizing: auto;
+        font-weight: 300;
+        font-style: normal;
+        font-variation-settings:
+          "wdth" 100;
+      }
+      .material-symbols-outlined {
+        font-variation-settings:
+        'FILL' 0,
+        'wght' 400,
+        'GRAD' 0,
+        'opsz' 24
+      }
+
+      body {
+        margin: 0;
+        padding: 0;
+      }
+
+      /* Navbar */
+      .navbar {
+        position: sticky;
+        top: 0;
+      }
+      .navbar ul {
+        list-style-type: none;
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+        background-color: #333333;
+      }
+      .navbar ul li {
+        float: left;
+      }
+      .navbar ul li a {
+        display: block;
+        color: white;
+        text-align: center;
+        padding: 14px 16px;
+        text-decoration: none;
+      }
+      .navbar-disabled ul li a {
+        display: block;
+        text-align: center;
+        padding: 14px 16px;
+        text-decoration: none;
+        color: gray;
+      }
+      .navbar ul li a:hover {
+        background-color: #111111;
+        cursor: pointer;
+      }
+      .navbar-disabled ul li a:hover {
+        background-color: #333333;
+        cursor: not-allowed;
+      }
+      .navbar ul li .nav-link-disabled {
+        display: block;
+        text-align: center;
+        padding: 14px 16px;
+        text-decoration: none;
+        color: gray;
+      }
+      .navbar ul li .nav-link-disabled:hover {
+        background-color: #333333;
+        cursor: not-allowed;
+      }
+      .navbar ul li a .material-symbols-outlined {
+        vertical-align: middle;
+        margin-right: 5px;
+      }
+      .nav-roomStatus {
+        display: flex;
+        padding-right: 10px;
+        float: right;
+        align-items: center;
+      }
+      .nav-roomStatus img {
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        margin-right: 5px;
+      }
+      .nav-roomStatus-desc {
+        padding-right: 5px;
+      }
+
+      /* Buttons */
+      .btn {
+        border-radius: 8px;
+        padding: 10px 20px;
+        color: white;
+        border: none;
+        cursor: pointer;
+      }
+
+      .btn-primary {
+        background-color: #007bff;
+        transition: transform 0.3s;
+      }
+      .btn-primary:hover {
+        background-color: #005eff;
+        transform: scale(0.95);
+      }
+
+      .btn-small {
+        transform: scale(0.90);
+        padding: 10px 18px;
+      }
+      .btn-small:hover {
+        transform: scale(0.85);
+      }
+
+      .inline-header {
+        display: inline;
+      }
+
+      .textbox {
+        border: 2px solid #ccc;
+        border-radius: 15px;
+        padding: 10px;
+        outline: none;
+      }
+      .error-msg {
+        color: red;
+      }
+      .dropdown {
+        border: 2px solid #ccc;
+        border-radius: 15px;
+        padding: 10px;
+        outline: none;
+        padding: 10px;
+      }
+      
+      .send-msg {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        width: 100%;
+      }
+      .msg-entry {
+        width: 90%;
+      }
+      .send-btn {
+        width: 8%;
+      }
+      
+      #messages {
+        height: calc(100vh - 100px);
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+      }
+      
+      .message {
+        padding-bottom: 10px;
+        margin-top: auto;
+      }
+      .msg-uname {
+        font-size: 20px;
+        display: inline;
+      }
+      .msg-text {
+        font-size: 17px;
+        padding-top: 3px;
+        padding-left: 32px;
+      }
+      .msg-pfp img {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        float: left;
+        margin-right: 5px;
+      }
+      .msg-platform img {
+        width: 16px;
+        height: 16px;
+        margin-left: 3px;
+      }
+      .msg-inline-platform {
+        display: flex;
+        align-items: center;
+      }
+      .msg-img img {
+        width: 320px;
+        height: 240px;
+        border-radius: 15%;
+        padding-left: 20px;
+      }
+      .sysinfo-left-bar-container {
+        border-left: 5px solid;
+        padding-left: 5px;
+        margin-left: 5px;
+      }
+      .bar-green {
+        border-left-color: #008000;
+      }
+      .bar-red {
+        border-left-color: #ff0000;
+      }
+      .bar-orange {
+        border-left-color: #ff7f00;
+      }
+      .msg-sysinfo-text {
+        font-weight: 300;
+        font-size: 17px;
+      }
+      .welcomemsg-uname {
+        border-radius: 8px;
+        background: #36454f;
+        color: #ffffff;
+        padding: 0px 5px;
+      }
+
+      .rooms {
+        display: grid;
+        grid-template-columns: repeat(6, 1fr);
+        grid-template-rows: repeat(2, 1fr);
+        grid-column-gap: 10px;
+        grid-row-gap: 10px;
+        padding: 10px;
+      }
+      .room {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        background-color: #d3d3d3;
+        border-radius: 5%;
+        padding: 20px;
+      }
+      .breakflex {
+        flex-basis: 100%;
+        height: 0;
+      }
+      .room-img {
+        display: inline-block;
+        padding-right: 10px;
+      }
+      .room-img img {
+        width: 32px;
+        height: 32px;
+      }
+      .room-name {
+        display: inline-block;
+      }
+      .room-online-indicator {
+        display: inline-block;
+        padding-right: 5px;
+      }
+      .room-online-indicator img {
+        width: 16px;
+        height: 16px;
+      }
+      .room-online-count {
+        display: inline-block;
+      }
+      .room-enter {
+        display: inline-block;
+        margin-left: 10px;
+        width: 75px;
+        height: 40px;
+      }
+
+      .info {
+        padding: 10px;
+      }
+      .info-btn {
+        margin-bottom: 5px;
+      }
+
+      #page-options {
+        padding: 20% 0;
+        text-align: center;
+      }
+
+      .hidden { /* should always stay at the bottom here */
+        display: none;
+      }
+    </style>
+  </head>
+  <body>
+    <!--
+    icon:
+    <span class="material-symbols-outlined">[iconName]</span>
+    nav item:
+    <li><a onclick="nav[Name]()"><span class="material-symbols-outlined">[iconName]</span></a></li>
+    -->
+
+    <!-- Navbar -->
+    <div class="navbar" id="navbar">
+    <ul>
+      <li>
+        <a id="navlink-chat" onclick="navBtn('chat')">
+          <span class="material-symbols-outlined">chat</span>
+            <span class="roboto-font">Chat</span>
+        </a>
+      </li>
+      <li>
+        <a id="navlink-rooms" onclick="navBtn('rooms')">
+          <span class="material-symbols-outlined">category</span>
+            <span class="roboto-font">Rooms</span>
+        </a>
+      </li>
+      <li>
+        <a id="navlink-info" onclick="navBtn('info')">
+          <span class="material-symbols-outlined">info</span>
+          <span class="roboto-font">Info</span>
+        </a>
+      </li>
+      <li>
+        <a id="navlink-options" onclick="navBtn('options')">
+          <span class="material-symbols-outlined">settings</span>
+            <span class="roboto-font">Options</span>
+        </a>
+      </li>
+      <!-- css "float:right;" makes this a bit confusing, sorry -->
+      <p class="nav-roomStatus"><p class="nav-roomStatus nav-roomStatus-desc">Currently in room:</p>
+    </ul>
+    </div>
+
+    <!-- Main Menu -->
+    <div id="page-mainmenu">
+      <br><h1 class="roboto-font inline-header">Aurorachat</h1><br><br>
+      <button class="btn btn-primary" onclick="gotoPage('signin')">Sign In</button>
+      <button class="btn btn-primary" onclick="gotoPage('signup')">Sign Up</button>
+    </div>
+
+    <!-- Sign In -->
+    <div class="hidden" id="page-signin">
+      <br><h1 class="roboto-font inline-header">Aurorachat</h1>
+      <span class="roboto-font">Sign In</span><br><br>
+      <input class="textbox" placeholder="Username" id="signin-username"><br>
+      <input type="password" class="textbox" placeholder="Password" id="signin-password"><br><br>
+      <button class="btn btn-primary" onclick="login()">Submit</button>
+      <button class="btn btn-primary" onclick="gotoPage('mainmenu')">Back</button>
+      <p id="signin-err" class="roboto-font error-msg hidden">Error: [error msg]</p>
+    </div>
+
+    <!-- Sign Up -->
+    <div class="hidden" id="page-signup">
+      <br><h1 class="roboto-font inline-header">Aurorachat</h1>
+      <span class="roboto-font">Sign Up</span><br><br>
+      <input class="textbox" placeholder="Username" id="signup-username"><br>
+      <input type="password" class="textbox" placeholder="Password" id="signup-password"><br><br>
+      <button class="btn btn-primary" onclick="signup()">Submit</button>
+      <button class="btn btn-primary" onclick="gotoPage('mainmenu')">Back</button>
+      <p id="signup-err" class="roboto-font error-msg hidden">Error: [error msg]</p>
+    </div>
+
+    <!-- Chat -->
+    <div class="hidden" id="page-chat">
+      <div id="messages">
+      </div>
+      <div class="send-msg">
+        <input class="textbox msg-entry" id="msg-textbox" placeholder="Message">
+        <button class="btn btn-primary send-btn" onclick="sendMessage()">Send</button>
+      </div>
+    </div>
+
+    <!-- Rooms -->
+    <div class="hidden" id="page-rooms">
+      <br><h1 class="roboto-font inline-header">Aurorachat</h1>
+      <span class="roboto-font">Rooms</span><br><br>
+      <div class="rooms">
+      </div>
+    </div>
+
+    <!-- Info -->
+    <div class="hidden" id="page-info">
+      <br><h1 class="roboto-font inline-header">Aurorachat</h1>
+      <span class="roboto-font">Info</span><br><br>
+      <div class="info">
+        <button class="btn btn-primary info-btn" onclick="showInfo('rules');">Rules</button><br>
+        <button class="btn btn-primary info-btn" onclick="showInfo('faq');">FAQ</button><br>
+        <button class="btn btn-primary info-btn" onclick="showInfo('changelog');">Changelog</button>
+      </div>
+    </div>
+
+    <!-- Options -->
+    <div class="hidden" id="page-options">
+      The options page is currently unfinished, check back later
+    </div>
+
+    <script src="connection.js"></script>
+    <script>
+      const EXPIRY_DATE_MS = 3600000; // expiry date for login token (1 hour)
+      // server info
+      const url = "104.236.25.60";
+      const http_port = 6767;
+      const wss_port = 3034;
+      
+      function isNavEnabled(button) {
+        console.log("Checking navbar enabled state for: ", button);
+        if (button == "all") {
+          if (!document.getElementById("navbar").classList.contains("navbar-disabled")) {
+            console.log("Entire navbar is enabled");
+            return true;
+          } else {
+            console.log("Entire navbar is disabled");
+            return false;
+          }
+        } else {
+          if (!document.getElementById("navlink-" + button).classList.contains("nav-link-disabled")) {
+            console.log("Navbar button ", button, " is enabled");
+            return true;
+          } else {
+            console.log("Navbar button ", button, " is disabled");
+            return false;
+          }
+        }
+      }
+
+      function navBtn(btn) {
+        console.log("Navbar: button '", btn, "' clicked");
+        if (isNavEnabled(btn) && isNavEnabled("all")) {
+          gotoPage(btn)
+        }
+      }
+      
+      function toggleNav(button) {
+        console.log("Toggling navbar state for: ", button);
+        if (button == "all") {
+          document.getElementById("navbar").classList.toggle("navbar-disabled");
+        } else {
+          document.getElementById("navlink-" + button).classList.toggle("nav-link-disabled");
+        }
+        
+      }
+
+      function gotoPage(page) {
+        console.log("Going to page: ", page);
+        pages = ["mainmenu", "signin", "signup", "chat", "rooms", "info", "options"]
+        for (const pageToHide of pages) {
+          console.log("Hiding: ", pageToHide);
+          document.getElementById("page-"+pageToHide).classList.add("hidden");
+        }
+        console.log("Showing: ", page);
+        document.getElementById("page-"+page).classList.remove("hidden");
+      }
+      function appendMsg(pfp, username, text, platform, img) {
+        const messageDiv = document.createElement('div'); // message div
+        messageDiv.classList.add("message");
+        const pfpDiv = document.createElement('div'); // pfp div
+        pfpDiv.classList.add("msg-pfp");
+        const pfpImg = document.createElement('img'); // pfp img
+        pfpImg.src = pfp;
+        pfpDiv.appendChild(pfpImg);
+        messageDiv.appendChild(pfpDiv);
+        const inlinePlatformDiv = document.createElement('div'); // inline platform div
+        inlinePlatformDiv.classList.add("msg-inline-platform");
+        const unameDiv = document.createElement('div'); // username
+        unameDiv.classList.add("msg-uname");
+        unameDiv.innerText = username;
+        inlinePlatformDiv.appendChild(unameDiv);
+        const platformDiv = document.createElement('div'); // platform div
+        platformDiv.classList.add("msg-platform");
+        const platformImg = document.createElement('img'); // platform img
+        platformImg.src = platform;
+        platformDiv.appendChild(platformImg);
+        inlinePlatformDiv.appendChild(platformDiv);
+        messageDiv.appendChild(inlinePlatformDiv);
+        const textDiv = document.createElement('div'); // text div
+        textDiv.classList.add("msg-text");
+        if (text) { // check if empty
+          textDiv.innerText = text;
+        } else {
+          textDiv.innerHTML = "<i style='font-size:14px;'>[empty msg]</i>";
+        }
+        messageDiv.appendChild(textDiv);
+        if (img) {
+          const imgDiv = document.createElement('div'); // img div
+          imgDiv.classList.add("msg-img");
+          const imgEl = document.createElement('img'); // img el
+          imgEl.src = img;
+          imgDiv.appendChild(imgEl);
+          messageDiv.appendChild(imgDiv);
+        }
+        appendAndScroll(messageDiv);
+      }
+      function appendAndScroll(element) {
+        msgContainer = document.getElementById("messages");
+        msgContainer.appendChild(element);
+        if (msgContainer.firstChild.innerHTML.startsWith("<br>")) {
+          msgContainer.firstChild.firstChild.remove();
+        }
+        msgContainer.scrollTop = msgContainer.scrollHeight; // later, make it first check if scrolled to bottom
+      }
+      function getSysMsgElement(barColor) {
+        const messageDiv = document.createElement('div'); // message div
+        messageDiv.classList.add("message", "system-info");
+        const titleDiv = document.createElement('div'); // title div
+        titleDiv.classList.add("msg-sysinfo-title");
+        const textDiv = document.createElement('div'); // text div
+        textDiv.classList.add("msg-sysinfo-text", "roboto-font");
+        if (barColor) { // append title+text to barDiv instead
+          const barDiv = document.createElement('div');
+          barDiv.classList.add("sysinfo-left-bar-container", "bar-"+barColor);
+          barDiv.appendChild(titleDiv);
+          barDiv.appendChild(textDiv);
+          messageDiv.appendChild(barDiv);
+        } else {
+          messageDiv.appendChild(titleDiv);
+          messageDiv.appendChild(textDiv);
+        }
+        return messageDiv;
+      }
+      function appendSysMsg(title, text, barColor) { // barColor can also be null, meaning no bar
+        messageDiv = getSysMsgElement(barColor);
+        titleDiv = messageDiv.querySelector(".msg-sysinfo-title");
+        titleDiv.innerText = title;
+        textDiv = messageDiv.querySelector(".msg-sysinfo-text");
+        textDiv.innerText = text;
+
+        appendAndScroll(messageDiv);
+      }
+      function appendWelcomeMsg(username) { // pretty much the same as appendSysMsg() but with a <span> for username
+        messageDiv = getSysMsgElement("green");
+        titleDiv = messageDiv.querySelector(".msg-sysinfo-title");
+
+        const unameSpan = document.createElement('span');
+        unameSpan.classList.add("welcomemsg-uname");
+        unameSpan.innerText = username;
+
+        titleDiv.append(unameSpan, "  has joined the chat.");
+        textDiv = messageDiv.querySelector(".msg-sysinfo-text");
+        textDiv.classList.add("roboto-font");
+        textDiv.innerText = "Everyone say hi!";
+
+        appendAndScroll(messageDiv);
+      }
+
+      function appendRoom(icon, name, onlineCount) {
+        const roomDiv = document.createElement('div'); // room div
+        roomDiv.classList.add("room");
+        const imgDiv = document.createElement('div'); // room img div
+        imgDiv.classList.add("room-img");
+        const imgEl = document.createElement('img'); // room img
+        imgEl.src = icon;
+        imgDiv.appendChild(imgEl);
+        roomDiv.appendChild(imgDiv);
+        const nameDiv = document.createElement('div'); // room name div
+        nameDiv.classList.add("room-name");
+        nameDiv.innerText = name;
+        roomDiv.appendChild(nameDiv);
+        const breakFlexDiv = document.createElement('div'); // breakflex div
+        breakFlexDiv.classList.add("breakflex");
+        roomDiv.appendChild(breakFlexDiv);
+        const onlineIndicatorDiv = document.createElement('div'); // online indicator div
+        onlineIndicatorDiv.classList.add("room-online-indicator");
+        const onlineIndicatorImg = document.createElement('img'); // online indicator img
+        if (onlineCount) {
+          onlineIndicatorImg.src = "img/online/green.png"
+        } else {
+          onlineIndicatorImg.src = "img/online/red.png"
+        }
+        onlineIndicatorDiv.appendChild(onlineIndicatorImg);
+        roomDiv.appendChild(onlineIndicatorDiv);
+        const onlineCountDiv = document.createElement('div'); // online count div
+        onlineCountDiv.classList.add("room-online-count");
+        onlineCountDiv.innerText = onlineCount+" online"
+        roomDiv.appendChild(onlineCountDiv);
+        const enterBtn = document.createElement('button'); // enter button
+        enterBtn.classList.add("btn", "btn-primary", "room-enter");
+        enterBtn.innerText = "Enter";
+        enterBtn.addEventListener("click", function(event) { // do stuff on button click
+          enterRoom(name, icon);
+        });
+        roomDiv.appendChild(enterBtn);
+        document.getElementsByClassName("rooms")[0].appendChild(roomDiv);
+      }
+
+      function showInfo(type) {
+        newDiv = document.createElement("div");
+        if (type == "rules") {
+          newDiv.innerHTML = `
+            Rules <br>
+            1) thing <br>
+          `;
+        } else if (type == "faq") {
+          newDiv.innerHTML = `
+            FAQ <br>
+            1) thing <br>
+          `;
+        } else if (type == "changelog") {
+          newDiv.innerHTML = `
+            Changelog <br>
+            1) thing <br>
+          `;
+        }
+        newDiv.innerHTML += `<br><button class="btn btn-primary" onclick="mainInfo()">Back</button>`;
+        document.getElementsByClassName("info")[0].replaceChildren(newDiv);
+      }
+      function mainInfo() {
+        rulesBtn = document.createElement("button"); // rules button
+        rulesBtn.classList.add("btn", "btn-primary", "info-btn");
+        rulesBtn.addEventListener("click", function(event) {showInfo('rules')});
+        rulesBtn.innerText = "Rules";
+        break1 = document.createElement("br");
+        faqBtn = document.createElement("button"); // faq button
+        faqBtn.classList.add("btn", "btn-primary", "info-btn");
+        faqBtn.addEventListener("click", function(event) {showInfo('faq')});
+        faqBtn.innerText = "FAQ";
+        break2 = document.createElement("br");
+        changelogBtn = document.createElement("button"); // changelog button
+        changelogBtn.classList.add("btn", "btn-primary", "info-btn");
+        changelogBtn.addEventListener("click", function(event) {showInfo('changelog')});
+        changelogBtn.innerText = "Changelog";
+        document.getElementsByClassName("info")[0].replaceChildren(rulesBtn, break1, faqBtn, break2, changelogBtn);
+      }
+
+      document.getElementById("msg-textbox").addEventListener("keydown", function(event) {
+        if (event.key === "Enter") {
+          sendMessage();
+        }
+      });
+      document.getElementById("page-signin").addEventListener("keydown", function(event) {
+        if (event.key === "Enter") {
+          login();
+        }
+      });
+      document.getElementById("page-signup").addEventListener("keydown", function(event) {
+        if (event.key === "Enter") {
+          signup();
+        }
+      });
+      
+      var client = new Client("AuC-WebClient", url, http_port, wss_port);
+
+      client.onMessage = function(data) {
+        if (data.room == currentRoom[0]) {
+          appendMsg(data.pfp, data.username, data.message, data.platform, data.image);
+        };
+      }
+      client.onError = function(error) {
+        appendSysMsg("Error", error.message, "red");
+      }
+      client.onClose = function() {
+        appendSysMsg("Info", "Connection has closed", "orange");
+      }
+
+      token = ""
+      function handleToken(tokenarg) {
+        console.log(tokenarg)
+        if (tokenarg) {
+            token = tokenarg;
+            toStore = JSON.stringify([token, (Date.now() + EXPIRY_DATE_MS)]); // has expiry date
+            localStorage.setItem("authToken", toStore);
+        } else {
+          returned = JSON.parse(localStorage.getItem("authToken"));
+          if (returned) { // check if exists
+            returnedToken = returned[0];
+            returnedExpiryDate = returned[1];
+            if (returnedExpiryDate > Date.now()) { // check if expired
+                token = returnedToken;
+                return token;
+            } else {
+                return null;
+            }
+          } else {
+            return null;
+          }
+        }
+      }
+
+      function showErr(page, err) {
+        errEl = document.getElementById(page+"-err");
+        errEl.innerText = err;
+        errEl.classList.remove("hidden");
+        console.error("["+page+"]", err);
+      }
+      function clearErr(page) {
+        errEl = document.getElementById(page+"-err");
+        errEl.classList.add("hidden");
+      }
+      async function login() {
+        username = document.getElementById("signin-username").value;
+        password = document.getElementById("signin-password").value;
+        clearErr("signin")
+        console.log("Logging in: ", username);
+        if (!username || !password) {
+          showErr("signin", "Error: Username or password are missing");
+          return;
+        }
+        data = await client.login(username, password);
+        console.log(data)
+        switch(data) {
+          case "ERR_BANNED":
+            showErr("signin", "Error: You are banned.");
+            return;
+          case "ERR_INVALID_TOKEN":
+            showErr("signin", "Error: Token invalid, please reload the page.");
+            return;
+          case "ERR_WHAT_THE_HECK":
+            showErr("signin", "An unknown error occurred.");
+            return;
+          case "ERR_WRONG_PASS":
+            showErr("signin", "Error: Incorrect password.");
+            return;
+        }
+        handleToken(data.split("|")[0]);
+        toggleNav("all"); // enable nav
+        gotoPage("chat");
+      }
+      
+      async function signup() {
+        username = document.getElementById("signup-username").value;
+        password = document.getElementById("signup-password").value;
+        console.log("Creating account:", username);
+        clearErr("signup")
+        if (!username || !password) {
+          showErr("signup", "Error: Username or password are missing");
+          return;
+        }
+        data = await client.signup(username, password)
+        switch(data) {
+          case "ERR_BANNED":
+            showErr("signup", "Error: You are banned.");
+            return;
+          case "ERR_INVALID_TOKEN":
+            showErr("signin", "Error: Token invalid, please reload the page.");
+            return;
+          case "ERR_WHAT_THE_HECK":
+            showErr("signup", "An unknown error occurred.");
+            return;
+          case "ERR_MISSING_INPUT": // shouldn't happen, already checked earlier
+            showErr("signup", "Error: Username or password are missing");
+            return;
+          case "ERR_USER_USED":
+            showErr("signup", "Error: Account already in use.");
+            return;
+        }
+        handleToken(data.split("|")[0]);
+        toggleNav("all"); // enable nav
+        gotoPage("chat");
+      }
+      currentRoom = null;
+      function sendMessage() {
+        message = document.getElementById("msg-textbox").value;
+        console.log("Sending message:", message);
+        data = client.send(token, message, currentRoom[0], "Web")
+        document.getElementById("msg-textbox").value = ""; // clear textbox
+      }
+
+      function setRoomStatus(name, img) {
+        const imgEl = document.createElement("img")
+        imgEl.src = img
+        document.getElementsByClassName("nav-roomStatus")[0].replaceChildren()
+        document.getElementsByClassName("nav-roomStatus")[0].append(imgEl, "#"+name)
+      }
+      function enterRoom(name, img) {
+        setRoomStatus(name, img);
+        currentRoom = [name, img];
+        // hacky fix to keep messages at bottom on start
+        document.getElementById("messages").replaceChildren();
+        const hackyFixDivs = new Array(30).fill(document.createElement("div")); // ah yes, "hackyFixDivs"
+        hackyFixDivs.forEach(hackyFixDiv => {
+          hackyFixDiv.classList.add("message");
+          hackyFixBr = document.createElement("br");
+          hackyFixDiv.appendChild(hackyFixBr);
+          document.getElementById("messages").appendChild(hackyFixDiv);
+        });
+      }
+      async function getRooms() {
+        data = await client.rooms(token);
+        data["rooms"].forEach((item) => {
+          appendRoom("https://placehold.co/64?text="+item[0], item, "?")
+        })
+        return data;
+      }
+      if (!handleToken()) { // disable nav if not signed in
+        toggleNav("all");
+      } else {
+        gotoPage("chat");
+      }
+      getRooms();
+      enterRoom("general", "https://placehold.co/64?text=g")
+    </script>
+  </body>
+</html>
+
