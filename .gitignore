@@ -51,3 +51,7 @@ htmlcov/
 *.bak
 *.tmp
 maintenanceMode_Active.conf
+
+# --- NodeJS Packages ---
+package-lock.json
+node_modules

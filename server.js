@@ -270,25 +270,28 @@ app.use(session({
 }));
 
 app.get('/admin/login', async (req, res) => {
-  res.send(`
-    <form method="POST">
-        <input name="username" placeholder="Username" required />
-        <input name="password" type="password" placeholder="Password" required />
-        <button type="submit">Login</button>
-    </form>
-    `);
+  fs.readFile('admin-web/login.html', 'utf8', (_, data) => {
+    res.send(data);
+  });
 });
+
 app.post('/admin/login', async (req, res) => {
   const {username, password} = req.body;
   const users = readUsers();
   const user = users.admins.find(user => user.username === username);
   if (!await bcrypt.compare(password, user.password)) {
     console.log("Wrong password");
-    return res.status(403).send(`<p><a href="https://www.youtube.com/watch?v=dWX8Kafsc3c">Invalid credentials.</a></p><a href='/admin/login'>Go back</a>`);
+    fs.readFile('admin-web/login.html', 'utf8', (_, data) => {
+      return res.status(403).send(data);
+    });
+    return // Adding this just in case.
   }
 
   if (!user) {
-    return res.status(403).send(`<p><a href="https://www.youtube.com/watch?v=dWX8Kafsc3c">Invalid credentials.</a></p><a href='/admin/login'>Go back</a>`);
+    fs.readFile('admin-web/login.html', 'utf8', (_, data) => {
+      return res.status(403).send(data);
+    });
+    return // Same thing here.
   }
 
   req.session.admin = true;
@@ -303,60 +306,19 @@ app.get('/admin', async (req, res) => {
   if (!req.session.admin) {
     return res.redirect("/admin/login");
   }
-  res.send(`
-    <html>
-      <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com">
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-        <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,100..900;1,100..900&display=swap" onload="this.onload=null;this.rel='stylesheet'">
-        <noscript>
-          <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,100..900;1,100..900&display=swap">
-        </noscript>
-
-        <style>
-          h1, p, h2, a {
-            font-family: 'Roboto', Arial, sans-serif;
-          }
-        </style>
-      </head>
-      <body>
-        <h2>User Negative Actions</h2>
-        <a style='color: red;' href='/admin/ban'>Ban User</a><br>
-        <a style='color: red;' href='/admin/delete'>Delete User</a><br>
-        <h2>User Positive Actions</h2>
-        <a style='color: green;' href='/admin/createAccount'>Create Account</a><br>
-        <a style='color: blue;' href='/admin/userinfo'>Check User Information</a><br>
-      </body>
-    </html>
-  `);
+  
+  fs.readFile('admin-web/index.html', 'utf8', (_, data) => {
+    res.send(data);
+  });
 });
 
 app.get('/admin/ban', async (req, res) => {
   if (!req.session.admin) {
     return res.redirect("/admin/login");
   }
-  return res.send(`
-    <html>
-      <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com">
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-        <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,100..900;1,100..900&display=swap" onload="this.onload=null;this.rel='stylesheet'">
-
-        <style>
-          h1, p, h2, a {
-            font-family: 'Roboto', Arial, sans-serif;
-          }
-        </style>
-      </head>
-      <body>
-      <h1>Ban User</h1>
-      <form method="POST">
-        <input name="username" placeholder="Username to ban" /><br>
-        <button type="submit">Ban</button>
-    </form>
-    </body
-    </html>
-  `);
+  fs.readFile('admin-web/ban/ban.html', 'utf8', (_, data) => {
+    res.send(data);
+  });
 });
 
 app.post('/admin/ban', async (req, res) => {
@@ -367,42 +329,23 @@ app.post('/admin/ban', async (req, res) => {
   const users = readUsers();
   const user = users.users.find(user => user.username === username);
   if (user) {
-    user.banned = true;
+    user.banned = true; // can't we just delete the account and add the username to a banned list instead?
   }
   writeUsers(users);
 
-  return res.send(`
-    <p>User banned!</p>
-    <a href="/admin">Go back</a>
-    `);
+  
+  fs.readFile('admin-web/ban/banned.html', 'utf8', (_, data) => {
+    return res.send(data);
+  });
 });
 
 app.get('/admin/delete', async (req, res) => {
   if (!req.session.admin) {
     return res.redirect("/admin/login");
   }
-  return res.send(`
-    <html>
-      <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com">
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-        <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,100..900;1,100..900&display=swap" onload="this.onload=null;this.rel='stylesheet'">
-
-        <style>
-          h1, p, h2, a {
-            font-family: 'Roboto', Arial, sans-serif;
-          }
-        </style>
-      </head>
-      <body>
-      <h1 style='color: red;'>Delete User</h1>
-      <form method="POST">
-        <input name="username" placeholder="Username to murder in real life" /><br>
-        <button type="submit">Send hitmen</button>
-    </form>
-    </body
-    </html>
-  `);
+  fs.readFile('admin-web/delete/delete.html', 'utf8', (_, data) => {
+    return res.send(data);
+  });
 });
 
 app.post('/admin/delete', async (req, res) => {
@@ -414,39 +357,18 @@ app.post('/admin/delete', async (req, res) => {
   users.users = users.users.filter(user => user.username !== username);
   writeUsers(users);
 
-  return res.send(`
-    <p>User deleted!</p>
-    <a href="/admin">Go back</a>
-    `);
+  fs.readFile('admin-web/delete/deleted.html', 'utf8', (_, data) => {
+    return res.send(data);
+  });
 });
 
 app.get('/admin/createAccount', async (req, res) => {
   if (!req.session.admin) {
     return res.redirect("/admin/login");
   }
-  return res.send(`
-    <html>
-      <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com">
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-        <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,100..900;1,100..900&display=swap" onload="this.onload=null;this.rel='stylesheet'">
-
-        <style>
-          h1, p, h2, a {
-            font-family: 'Roboto', Arial, sans-serif;
-          }
-        </style>
-      </head>
-      <body>
-      <h1 style='color: green;'>Create User</h1>
-      <form method="POST">
-        <input name="username" placeholder="Username" required /><br>
-        <input name="password" placeholder="Password" required /><br>
-        <button type="submit">Create Account</button>
-    </form>
-    </body
-    </html>
-  `);
+  fs.readFile('admin-web/create/create.html', 'utf8', (_, data) => {
+    return res.send(data);
+  });
 });
 
 app.post('/admin/createAccount', async (req, res) => {
@@ -466,38 +388,18 @@ app.post('/admin/createAccount', async (req, res) => {
   users.users.push(newUser);
   writeUsers(users);
 
-  return res.send(`
-    <p>User created!</p>
-    <a href="/admin">Go back</a>
-    `);
+  fs.readFile('admin-web/create/created.html', 'utf8', (_, data) => {
+    return res.send(data);
+  });
 });
 
 app.get('/admin/userinfo', async (req, res) => {
   if (!req.session.admin) {
     return res.redirect("/admin/login");
   }
-  return res.send(`
-    <html>
-      <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com">
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-        <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,100..900;1,100..900&display=swap" onload="this.onload=null;this.rel='stylesheet'">
-
-        <style>
-          h1, p, h2, a {
-            font-family: 'Roboto', Arial, sans-serif;
-          }
-        </style>
-      </head>
-      <body>
-      <h1 style='color: green;'>Check User Information</h1>
-      <form method="POST">
-        <input name="username" placeholder="Username" required /><br>
-        <button type="submit">Grab Info</button>
-    </form>
-    </body
-    </html>
-  `);
+  fs.readFile('admin-web/userinfo/userinfoform.html', 'utf8', (_, data) => {
+    return res.send(data);
+  });
 });
 
 app.post('/admin/userinfo', async (req, res) => {
@@ -508,11 +410,15 @@ app.post('/admin/userinfo', async (req, res) => {
   
   const users = readUsers();
   const user = users.users.find(user => user.username === username);
-
-  return res.send(`
-    <p>Username: ${user.username}<br>Password Hash: ${user.password}<br>ID: ${user.id}<br>Banned: ${user.banned}</p>
-    <a href="/admin">Go back</a>
-    `);
+  // <p>Username: ${user.username}<br>Password Hash: ${user.password}<br>ID: ${user.id}<br>Banned: ${user.banned}</p>
+  fs.readFile('admin-web/userinfo/userinfo.html', 'utf8', (_, data) => {
+    return res.send(
+      data.replace("[username]", user.username)
+          .replace("[password]", user.password)
+          .replace("[id]", user.id)
+          .replace("[banned]", user.banned)
+    );
+  });
 });
 
 app.listen(HTTP_PORT, () => {
