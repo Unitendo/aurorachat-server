@@ -21,6 +21,7 @@ const USERS_FILE = path.join(__dirname, 'users.json');
 function readUsers() {
   try {
     if (!fs.existsSync(USERS_FILE)) {
+      writeUsers({ users: [], admins: [] });
       return { users: [], admins: [] };
     }
     const data = fs.readFileSync(USERS_FILE);
