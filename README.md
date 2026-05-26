@@ -18,33 +18,3 @@ npm install express express-session bcryptjs jsonwebtoken
 
 node server.js
 ```
-
-<details>
-<summary><strong>How to run AUC v4.5</strong></summary>
-
-> Python 3.14+ may cause compatibility issues. Please use Python 3.13 or earlier.
-
-### 1. Clone the repository
-```
-git clone https://github.com/Unitendo/aurorachat-server.git
-cd aurorachat-server
-git checkout bee4c25
-```
-
-### 2. Set up environment variables
-Copy the `.env.example` file and rename it to `.env`:
-```
-cp .env.example .env
-```
-This file contains environment variables that you can modify to your liking.
-
-### 3. Install dependencies
-```
-pip install flask flask-socketio flask-cors better-profanity bcrypt python-dotenv
-```
-
-### 4. Run the server
-```
-python server.py
-```
-</details>
