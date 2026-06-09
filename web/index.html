@@ -390,9 +390,9 @@
       <br><h1 class="roboto-font inline-header">Aurorachat</h1>
       <span class="roboto-font">Info</span><br><br>
       <div class="info">
-        <button class="btn btn-primary info-btn" onclick="showInfo('rules');">Rules</button><br>
-        <button class="btn btn-primary info-btn" onclick="showInfo('faq');">FAQ</button><br>
-        <button class="btn btn-primary info-btn" onclick="showInfo('changelog');">Changelog</button>
+        <button class="btn btn-primary info-btn" onclick="showInfo('Rules');">Rules</button><br>
+        <button class="btn btn-primary info-btn" onclick="showInfo('FAQ');">FAQ</button><br>
+        <button class="btn btn-primary info-btn" onclick="showInfo('Changelog');">Changelog</button>
       </div>
     </div>
 
@@ -405,7 +405,7 @@
     <script>
       const EXPIRY_DATE_MS = 3600000; // expiry date for login token (1 hour)
       // server info
-      const url = "104.236.25.60";
+      const url = "localhost";
       const http_port = 6767;
       const wss_port = 3034;
       
@@ -588,42 +588,31 @@
         roomDiv.appendChild(enterBtn);
         document.getElementsByClassName("rooms")[0].appendChild(roomDiv);
       }
-
       function showInfo(type) {
         newDiv = document.createElement("div");
-        if (type == "rules") {
-          newDiv.innerHTML = `
-            Rules <br>
-            1) thing <br>
-          `;
-        } else if (type == "faq") {
-          newDiv.innerHTML = `
-            FAQ <br>
-            1) thing <br>
-          `;
-        } else if (type == "changelog") {
-          newDiv.innerHTML = `
-            Changelog <br>
-            1) thing <br>
-          `;
-        }
-        newDiv.innerHTML += `<br><button class="btn btn-primary" onclick="mainInfo()">Back</button>`;
+        client.info(token, type.toLowerCase())
+          .then((data) => {
+            newDiv.innerHTML =
+              "<h4 class='roboto-font inline-header'>" + type + "</h4><br>"
+              + data.replaceAll("\n", "<br>")
+              + `<br><button class="btn btn-primary" onclick="mainInfo()">Back</button>`;
+          })
         document.getElementsByClassName("info")[0].replaceChildren(newDiv);
       }
       function mainInfo() {
         rulesBtn = document.createElement("button"); // rules button
         rulesBtn.classList.add("btn", "btn-primary", "info-btn");
-        rulesBtn.addEventListener("click", function(event) {showInfo('rules')});
+        rulesBtn.addEventListener("click", function(event) {showInfo('Rules')});
         rulesBtn.innerText = "Rules";
         break1 = document.createElement("br");
         faqBtn = document.createElement("button"); // faq button
         faqBtn.classList.add("btn", "btn-primary", "info-btn");
-        faqBtn.addEventListener("click", function(event) {showInfo('faq')});
+        faqBtn.addEventListener("click", function(event) {showInfo('FAQ')});
         faqBtn.innerText = "FAQ";
         break2 = document.createElement("br");
         changelogBtn = document.createElement("button"); // changelog button
         changelogBtn.classList.add("btn", "btn-primary", "info-btn");
-        changelogBtn.addEventListener("click", function(event) {showInfo('changelog')});
+        changelogBtn.addEventListener("click", function(event) {showInfo('Changelog')});
         changelogBtn.innerText = "Changelog";
         document.getElementsByClassName("info")[0].replaceChildren(rulesBtn, break1, faqBtn, break2, changelogBtn);
       }
@@ -681,7 +670,6 @@
           }
         }
       }
-
       function showErr(page, err) {
         errEl = document.getElementById(page+"-err");
         errEl.innerText = err;
@@ -782,8 +770,9 @@
       }
       async function getRooms() {
         data = await client.rooms(token);
-        data["rooms"].forEach((item) => {
-          appendRoom("https://placehold.co/64?text="+item[0], item, "?")
+        data["rooms"].forEach(async (item) => {
+          online = await client.online(token, item[0]);
+          appendRoom("https://placehold.co/64?text="+item[0], item, online)
         })
         return data;
       }

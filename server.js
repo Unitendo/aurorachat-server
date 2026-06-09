@@ -303,18 +303,45 @@ app.use(session({
     saveUninitialized: false,
     cookie: { secure: false }
 }));
-app.get('/api/rules', async (req, res) => {
+app.get('/api/rules', verifyToken, checkBan, async (req, res) => {
   const filePath = path.join(__dirname, 'rules.txt');
-    
-    res.sendFile(filePath, (err) => {
-        if (err) {
-            console.error(err);
-            if (!res.headersSent) {
-                res.status(404).send('* If you are reading this,&  I messed up somehow./%');
-            }
-        }
-    });
+  res.sendFile(filePath, (err) => {
+      if (err) {
+          console.error(err);
+          if (!res.headersSent) {
+              res.status(404).send('* If you are reading this,&  I messed up somehow./%');
+          }
+      }
+  });
 });
+app.get('/api/faq', verifyToken, checkBan, async (req, res) => {
+  const filePath = path.join(__dirname, 'faq.txt');
+  res.sendFile(filePath, (err) => {
+    if (err) {
+      console.error(err);
+      if (!res.headersSent) {
+        res.status(404).send('* If you are reading this,&  I messed up somehow./%');
+      }
+    }
+  });
+});
+app.get('/api/changelog', verifyToken, checkBan, async (req, res) => {
+  const filePath = path.join(__dirname, 'changelog.txt');
+  res.sendFile(filePath, (err) => {
+    if (err) {
+      console.error(err);
+      if (!res.headersSent) {
+        res.status(404).send('* If you are reading this,&  I messed up somehow./%');
+      }
+    }
+  });
+});
+
+app.post('/api/online', verifyToken, checkBan, async (req, res) => {
+  room = req.body;
+  // get online count for room, currently placeholder
+  res.status(200).send("?")
+})
 
 app.get('/admin/login', async (req, res) => {
   res.send(`

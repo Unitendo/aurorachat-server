@@ -96,4 +96,29 @@ class Client {
     };
     console.log(data)
   }
+  async info(token, infotype) {
+    const response = await fetch(this.url+"/api/"+infotype, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'text/plain',
+        'User-Agent': this.ua,
+        'auth': token
+      }
+    })
+    const data = await response.text();
+    return data;
+  }
+  async online(token, room) {
+    const response = await fetch(this.url+"/api/online", {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'text/plain',
+        'User-Agent': this.ua,
+        'auth': token
+      },
+      body: room
+    })
+    const data = await response.text();
+    return data;
+  }
 }
