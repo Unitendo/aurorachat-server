@@ -1,1 +1,23 @@
-placeholder
+Q: What is this?
+A: Aurorachat is a cross-platform chatting application for 3DS, Wii, and Wii U.
+
+Q: What does the "auroracross" account do?
+A: Our Discord server has a bot that that relays messages between Aurorachat and the ⁠aurora-chat channel on our discord server.
+
+Q: What qualifies as "personally identifiable information"?
+A: While your name, age, location, phone number, and email address should NEVER be shared online, it's up to the user what they choose to share. Asking for gender and friend codes has historically been permitted, but if someone chooses not to share, DO NOT continue to ask or a moderator may step in to warn you.
+
+Q: Is [this user] a mod?
+A: Moderators are present both on the Discord side and the Aurorachat side. Usually at least one mod is online at the time.
+
+Q: Can I make my own theme?
+A: Themes are not currently implemented within v0.6.0.5 on 3DS, but will hopefully be there again soon.
+
+Q: Why did I get banned?
+A: We try and clearly communicate with users when they're breaking our rules. If we have repeatedly asked you to stop, you will be banned, and we DO NOT accept ban appeals at this time. Reentering chat to ask this question will result in a short response and another ban.
+
+Q: Are you going to add...
+A: We are currently planning to add DMs, Image & Voice Chat Support to AuroraChat. Our team is rather small so please be patient with us!
+
+Q: How do i reset my password?
+A: You can reset your password using the instructions in the #auc-password-reset channel on our discord server, but only if we are certain that you are said user.
