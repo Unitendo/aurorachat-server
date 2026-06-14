@@ -48,12 +48,15 @@ const rooms = [
 ];
 
 const HISTORY_LIMIT = 100; // Easily changeable if moments pass. Shattered glass? Hands of time. Where's that chime?!
-const chatHistory = [];
+/**
+ * @type { Object.<string,{ username: string, message: string }[]> }
+ */
+const chatHistory = {};
 
 // Initialize an empty history array for every single room
-rooms.forEach(room => {
-  chatHistory[room] = [];
-});
+for(const room of rooms) {
+  chatHistory[room] = []
+}
 
 // The amount of rooms the client should parse (calculate dynamically in the future when user-created rooms exist)
 const roomCount = rooms.length;
@@ -65,10 +68,21 @@ const socket_server = net.createServer((socket) => {
   const {ip, port} = socket.address;
   console.log(`[${socket.remoteAddress}] Client connected`);
   clients.push(socket);
-  chatHistory.forEach(item => {
-    socket.write(`${item.username}|${item.rawBody}|\n`);
-  });
+
   socket.on('data', (data) => {
+    const msg = data.toString('utf-8').trim()
+
+    if(msg === 'history') {
+      for(const room in chatHistory) {
+        const history = chatHistory[room]
+        for(const msg of history) {
+          socket.write(`${msg.username}|${msg.message}|${room}|\n`)
+        }
+      }
+      console.log(`${socket.remoteAddress} requested message history`)
+      return
+    }
+
     console.log(`${socket.remoteAddress} tried sending data (Murder him): ${data}`);
   });
 
@@ -93,10 +107,21 @@ const ws_server = new websocket.Server({ port: WEBSOCKET_PORT, clientTracking: t
 // WSS connection handling
 ws_server.on('connection', (ws, req) => {
   console.log(`[${req.socket.remoteAddress}] Client connected`);
-  chatHistory.forEach(item => {
-    ws.send(`${item.username}|${item.rawBody}|\n`);
-  });
+
   ws.on('message', (data) => {
+    const msg = data.toString('utf-8').trim()
+
+    if(msg === 'history') {
+      for(const room in chatHistory) {
+        const history = chatHistory[room]
+        for(const msg of history) {
+          ws.send(`${msg.username}|${msg.message}|${room}|\n`)
+        }
+      }
+      console.log(`${req.socket.remoteAddress} requested message history`)
+      return
+    }
+
     console.log(`${req.socket.remoteAddress} tried sending data (Murder him): ${data}`);
   });
 
@@ -215,7 +240,7 @@ app.post('/api/chat', verifyToken, checkBan, async (req, res) => {
 
     // drop the oldest message if we exceed it
     if (chatHistory[currentRoom].length > HISTORY_LIMIT) {
-      chatHistory[currentRoom].shift();
+      chatHistory[currentRoom].splice(0, chatHistory[currentRoom].length - HISTORY_LIMIT)
     }
   }
 

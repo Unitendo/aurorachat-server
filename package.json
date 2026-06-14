@@ -25,5 +25,8 @@
     "express-session": "^1.19.0",
     "jsonwebtoken": "^9.0.3",
     "ws": "^8.21.0"
+  },
+  "nodemonConfig": {
+    "ignore": "users.json"
   }
 }
