@@ -427,6 +427,7 @@ app.get('/admin', async (req, res) => {
         <a style='color: green;' href='/admin/createAccount'>Create Account</a><br>
         <a style='color: blue;' href='/admin/userinfo'>Check User Information</a><br>
         <a style='color: #33351c;' href='/admin/unmute'>Unmute User</a><br>
+        <a style='color: yellow;' href='/admin/unban'>Unban User</a><br>
       </body>
     </html>
   `);
@@ -474,6 +475,51 @@ app.post('/admin/ban', async (req, res) => {
 
   return res.send(`
     <p>User banned!</p>
+    <a href="/admin">Go back</a>
+    `);
+});
+app.get('/admin/unban', async (req, res) => {
+  if (!req.session.admin) {
+    return res.redirect("/admin/login");
+  }
+  return res.send(`
+    <html>
+      <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,100..900;1,100..900&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+
+        <style>
+          h1, p, h2, a {
+            font-family: 'Roboto', Arial, sans-serif;
+          }
+        </style>
+      </head>
+      <body>
+      <h1>Unban User</h1>
+      <form method="POST">
+        <input name="username" placeholder="Username to unban" /><br>
+        <button type="submit">Unban</button>
+    </form>
+    </body
+    </html>
+  `);
+});
+
+app.post('/admin/unban', async (req, res) => {
+  if (!req.session.admin) {
+    return res.redirect("/admin/login");
+  }
+  const {username} = req.body;
+  const users = readUsers();
+  const user = users.users.find(user => user.username === username);
+  if (user) {
+    user.banned = false;
+  }
+  writeUsers(users);
+
+  return res.send(`
+    <p>User unbanned!</p>
     <a href="/admin">Go back</a>
     `);
 });
