@@ -159,8 +159,9 @@ function checkBan(req, res, next) {
   const user = users.users.find(user => user.ip === req.ip);
   if (user) {
     if (user.banned == true) {
-      console.log("Banned user");
-      return res.send("ERR_BANNED");
+      console.log(`Banned user attempted access: ${user.username}`);
+      const reason = user.banReason || "No reason specified";
+      return res.send(`ERR_BANNED|${reason}|`);
     } else {
       next();
     }
@@ -218,7 +219,8 @@ app.post('/api/chat', verifyToken, checkBan, async (req, res) => {
   const user2 = users2.users.find(user => user.username === req.user.username);
   if (user2) {
     if (user2.banned) {
-      return res.status(200).send("ERR_BANNED");
+      const reason = user2.banReason || "No reason specified";
+      return res.status(200).send(`ERR_BANNED|${reason}|`);
     }
     if (user2.muted) {
       console.log(`Muted user ${req.user.username} tried to chat.`);
@@ -279,7 +281,7 @@ app.post('/api/signup', checkBan, async (req, res) => {
   }
 
   const hashedPassword = await bcrypt.hash(password, 10);
-  const newUser = { id: Date.now().toString(), username, password: hashedPassword, admin: false, ip: req.ip, banned: false };
+  const newUser = { id: Date.now().toString(), username, password: hashedPassword, admin: false, ip: req.ip, banned: false, banReason: "", muted: false };
   users.users.push(newUser);
   writeUsers(users);
 
@@ -309,7 +311,8 @@ app.post('/api/login', checkBan, async (req, res) => {
 
   if (user) {
     if (user.banned) {
-      return res.status(200).send("ERR_BANNED");
+      const reason = user.banReason || "No reason specified";
+      return res.status(200).send(`ERR_BANNED|${reason}|\n`);
     }
   } else {
     return res.status(200).send("ERR_FAKE_USER");
@@ -420,11 +423,14 @@ app.get('/admin', async (req, res) => {
       </head>
       <body>
         <h2>User Negative Actions</h2>
+        <a style='color: red;' href='/admin/mute'>Mute User</a><br>
         <a style='color: red;' href='/admin/ban'>Ban User</a><br>
         <a style='color: red;' href='/admin/delete'>Delete User</a><br>
         <h2>User Positive Actions</h2>
         <a style='color: green;' href='/admin/createAccount'>Create Account</a><br>
         <a style='color: blue;' href='/admin/userinfo'>Check User Information</a><br>
+        <a style='color: #33351c;' href='/admin/unmute'>Unmute User</a><br>
+        <a style='color: yellow;' href='/admin/unban'>Unban User</a><br>
       </body>
     </html>
   `);
@@ -450,10 +456,11 @@ app.get('/admin/ban', async (req, res) => {
       <body>
       <h1>Ban User</h1>
       <form method="POST">
-        <input name="username" placeholder="Username to ban" /><br>
+        <input name="username" placeholder="Username to ban" required /><br><br>
+        <input name="reason" placeholder="Reason for ban" style="width: 300px;" /><br><br>
         <button type="submit">Ban</button>
     </form>
-    </body
+    </body>
     </html>
   `);
 });
@@ -462,16 +469,64 @@ app.post('/admin/ban', async (req, res) => {
   if (!req.session.admin) {
     return res.redirect("/admin/login");
   }
-  const {username} = req.body;
+  const {username, reason} = req.body;
   const users = readUsers();
   const user = users.users.find(user => user.username === username);
   if (user) {
     user.banned = true;
+    user.banReason = reason || "No reason specified";
   }
   writeUsers(users);
 
   return res.send(`
     <p>User banned!</p>
+    <p>Reason: ${reason || "No reason specified"}</p>
+    <a href="/admin">Go back</a>
+    `);
+});
+app.get('/admin/unban', async (req, res) => {
+  if (!req.session.admin) {
+    return res.redirect("/admin/login");
+  }
+  return res.send(`
+    <html>
+      <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,100..900;1,100..900&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+
+        <style>
+          h1, p, h2, a {
+            font-family: 'Roboto', Arial, sans-serif;
+          }
+        </style>
+      </head>
+      <body>
+      <h1>Unban User</h1>
+      <form method="POST">
+        <input name="username" placeholder="Username to unban" /><br>
+        <button type="submit">Unban</button>
+    </form>
+    </body>
+    </html>
+  `);
+});
+
+app.post('/admin/unban', async (req, res) => {
+  if (!req.session.admin) {
+    return res.redirect("/admin/login");
+  }
+  const {username} = req.body;
+  const users = readUsers();
+  const user = users.users.find(user => user.username === username);
+  if (user) {
+    user.banned = false;
+    user.banReason = "";
+  }
+  writeUsers(users);
+
+  return res.send(`
+    <p>User unbanned!</p>
     <a href="/admin">Go back</a>
     `);
 });
@@ -499,7 +554,7 @@ app.get('/admin/delete', async (req, res) => {
         <input name="username" placeholder="Username to murder in real life" /><br>
         <button type="submit">Send hitmen</button>
     </form>
-    </body
+    </body>
     </html>
   `);
 });
@@ -515,6 +570,100 @@ app.post('/admin/delete', async (req, res) => {
 
   return res.send(`
     <p>User deleted!</p>
+    <a href="/admin">Go back</a>
+    `);
+});
+app.get('/admin/mute', async (req, res) => {
+  if (!req.session.admin) {
+    return res.redirect("/admin/login");
+  }
+  return res.send(`
+    <html>
+      <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,100..900;1,100..900&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+
+        <style>
+          h1, p, h2, a {
+            font-family: 'Roboto', Arial, sans-serif;
+          }
+        </style>
+      </head>
+      <body>
+      <h1 style='color: red;'>Mute User</h1>
+      <form method="POST">
+        <input name="username" placeholder="Username to mute" /><br>
+        <button type="submit">Mute user</button>
+    </form>
+    </body>
+    </html>
+  `);
+});
+
+app.post('/admin/mute', async (req, res) => {
+  if (!req.session.admin) {
+    return res.redirect("/admin/login");
+  }
+  const { username } = req.body;
+  const users = readUsers();
+  const user = users.users.find(user => user.username === username);
+  
+  // Commit the mute to the database
+  if (user) {
+    user.muted = true;
+    writeUsers(users);
+  }
+
+  return res.send(`
+    <p>User Where... Where am I? Hello...? Anyone...? Is... is anybody out there...? Someone!? Anyone!? Can anyone hear me!? ... It's dark. It's so dark here. Someone, anyone, if you can hear me... Say something... please...</p>
+    <a href="/admin">Go back</a>
+    `);
+});
+app.get('/admin/unmute', async (req, res) => {
+  if (!req.session.admin) {
+    return res.redirect("/admin/login");
+  }
+  return res.send(`
+    <html>
+      <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,100..900;1,100..900&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+
+        <style>
+          h1, p, h2, a {
+            font-family: 'Roboto', Arial, sans-serif;
+          }
+        </style>
+      </head>
+      <body>
+      <h1 style='color: green;'>Unmute User</h1>
+      <form method="POST">
+        <input name="username" placeholder="Username to unmute" /><br>
+        <button type="submit">Unmute user</button>
+    </form>
+    </body>
+    </html>
+  `);
+});
+
+app.post('/admin/unmute', async (req, res) => {
+  if (!req.session.admin) {
+    return res.redirect("/admin/login");
+  }
+  const { username } = req.body;
+  const users = readUsers();
+  const user = users.users.find(user => user.username === username);
+  
+  if (user) {
+    user.muted = false;
+    writeUsers(users);
+  }
+
+
+  return res.send(`
+    <p>User unmuted!</p>
     <a href="/admin">Go back</a>
     `);
 });
@@ -543,7 +692,7 @@ app.get('/admin/createAccount', async (req, res) => {
         <input name="password" placeholder="Password" required /><br>
         <button type="submit">Create Account</button>
     </form>
-    </body
+    </body>
     </html>
   `);
 });
@@ -561,7 +710,7 @@ app.post('/admin/createAccount', async (req, res) => {
   }
 
   const hashedPassword = await bcrypt.hash(password, 10);
-  const newUser = { id: Date.now().toString(), username, password: hashedPassword, admin: false, ip: req.ip, banned: false };
+  const newUser = { id: Date.now().toString(), username, password: hashedPassword, admin: false, ip: req.ip, banned: false, banReason: "", muted: false };
   users.users.push(newUser);
   writeUsers(users);
 
@@ -594,7 +743,7 @@ app.get('/admin/userinfo', async (req, res) => {
         <input name="username" placeholder="Username" required /><br>
         <button type="submit">Grab Info</button>
     </form>
-    </body
+    </body>
     </html>
   `);
 });
@@ -609,7 +758,7 @@ app.post('/admin/userinfo', async (req, res) => {
   const user = users.users.find(user => user.username === username);
 
   return res.send(`
-    <p>Username: ${user.username}<br>Password Hash: ${user.password}<br>ID: ${user.id}<br>Banned: ${user.banned}</p>
+    <p>Username: ${user.username}<br>Password Hash: ${user.password}<br>ID: ${user.id}<br>Banned: ${user.banned}<br>Ban Reason: ${user.banReason || "None"}<br>Muted: ${user.muted}</p>
     <a href="/admin">Go back</a>
     `);
 });

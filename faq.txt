@@ -14,10 +14,16 @@ Q: Can I make my own theme?
 A: Themes are not currently implemented within v0.6.0.5 on 3DS, but will hopefully be there again soon.
 
 Q: Why did I get banned?
-A: We try and clearly communicate with users when they're breaking our rules. If we have repeatedly asked you to stop, you will be banned, and we DO NOT accept ban appeals on 3DS. Please join our Discord to make a ban appeal. Reentering chat to ask this question will result in a short response and another ban.
+A: We try and clearly communicate with users when they're breaking our rules. If we have repeatedly asked you to stop, you will be banned. Reentering chat to ask this question will result in a short response and another ban.
 
 Q: Are you going to add...
 A: We are currently planning to add DMs, Image & Voice Chat Support to AuroraChat. Our team is rather small so please be patient with us!
 
 Q: How do i reset my password?
 A: You can reset your password using the instructions in the #auc-password-reset channel on our discord server, but only if we are certain that you are said user.
+
+Q: What does every tier of staff do?
+A: AuroraChat Mods do general moderation of AuroraChat, while developers develop AuroraChat clients/servers. Please note that a developer may also be a mod, and vice versa.
+
+Q: Who develops what?
+A: 3DS client: Virtualle and Orstando. Wii client: Virtualle. Wii U client: Funtum. Orstando: No one develops him. Switch Client: 3pm. 9x client: Kw. Cool Guy: Everything (He is a nerd) Web Client: Orstando
