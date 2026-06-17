@@ -26,4 +26,4 @@ Q: What does every tier of staff do?
 A: AuroraChat Mods do general moderation of AuroraChat, while developers develop AuroraChat clients/servers. Please note that a developer may also be a mod, and vice versa.
 
 Q: Who develops what?
-A: 3DS client: Virtualle and Orstando. Wii client: Virtualle. Wii U client: Funtum. Orstando: No one develops him. Switch Client: 3pm. 9x client: Kw. Cool Guy: Everything (He is a nerd)
+A: 3DS client: Virtualle and Orstando. Wii client: Virtualle. Wii U client: Funtum. Orstando: No one develops him. Switch Client: 3pm. 9x client: Kw. Cool Guy: Everything (He is a nerd) Web Client: Orstando
