@@ -130,14 +130,34 @@ ws_server.on('connection', (ws, req) => {
 
   ws.on('message', (data) => {
     const msg = data.toString('utf-8').trim()
+    const parts = msg.split('|')
 
-    if(msg === 'history') {
-      for(const room in chatHistory) {
+    if(parts[0] === 'history') {
+      let limit = parts[1] ? parseInt(parts[1]) : 0
+      const room = parts[2]
+      if(limit == NaN) limit = 0
+      if(limit < 0) limit = 0
+      let message = ''
+      if(room) {
+        const history = chatHistory[room]
+        if(history) 
+          for(const msg of history) {
+            message += `${msg.username}|${msg.message}|${room}|\n`
+          }
+        else {
+          console.log(`${req.socket.remoteAddress} requested message history for nonexistent room (${room})`)
+          return
+        }
+      } else for(const room in chatHistory) {
         const history = chatHistory[room]
         for(const msg of history) {
-          ws.send(`${msg.username}|${msg.message}|${room}|\n`)
+          message += `${msg.username}|${msg.message}|${room}|\n`
         }
       }
+      if(limit && message.length > limit) {
+        message = message.substring(message.length - limit, message.length)
+      }
+      ws.send(message)
       console.log(`${req.socket.remoteAddress} requested message history`)
       return
     }
