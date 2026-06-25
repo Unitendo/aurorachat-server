@@ -1,20 +1,25 @@
-<h1 align="center">Welcome to the aurorachat repository!</h1>
-This is the server for Aurorachat.<br>
-For clients and stuff, see the <a href="https://github.com/Unitendo/aurorachat">main repo</a>.
+# Welcome to the aurorachat repository #
+
+This is the server for Aurorachat.  
+For clients and stuff, see the [main repo](https://github.com/Unitendo/aurorachat).  
 The license, code of conduct, and security/contributing guidelines in the main repo also apply here.
 
-<br>This repository is <b>open</b> for contributions! If you'd like to, you may open a PR or an issue, contributing helps us as we develop aurorachat!
+This repository is **open** for contributions! If you'd like to, you may open a PR or an issue, contributing helps us as we develop aurorachat!
 
-<h1 align="center">How to Run the Server</h1>
+## How to Run the Server ##
 
-### Running AUC v6
+### Running AUC v6 ###
 
-```
+```bash
 git clone https://github.com/Unitendo/aurorachat-server.git
 cd aurorachat-server
 
 # Install dependencies
 npm install express express-session bcryptjs jsonwebtoken
+
+# Setup server configuration
+cp config.example.js config.js
+# Now would be a great time to edit config.js
 
 node server.js
 ```

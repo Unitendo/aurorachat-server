@@ -23,6 +23,9 @@ ENV/
 *.sqlite3
 users.json
 
+# --- Server Configuration ---
+config.js
+
 # --- Logs ---
 *.log
 

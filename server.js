@@ -1,3 +1,4 @@
+const config = require('./config') // .env but shittier (tm)
 const express = require('express'); // express, used for webserver actions
 const net = require('net'); // net, used for socket functions
 const session = require('express-session'); // express-session, used for the admin panel
@@ -7,11 +8,10 @@ const path = require('path'); // Wait, what?
 const fs = require('fs'); // Filesystem actions
 const websocket = require('ws'); // WebSocket server, for the web client
 
-const TOKEN_SECRET = "replace with a randomly generated string"; // JWT secret key
-const SESSION_SECRET = "replace with a (different) randomly generated string"; // Secret key for admin panel cookies
-const HTTP_PORT = 6767;
-const SOCKET_PORT = 3033;
-const WEBSOCKET_PORT = 3034;
+const { 
+  TOKEN_SECRET, SESSION_SECRET,
+  HTTP_PORT, SOCKET_PORT, WEBSOCKET_PORT
+} = config
 
 const app = express(); // Create the actual server (the express one anyway)
 app.use(express.text()); // Make sure to accept raw text because JSON parsing in base C is hell
