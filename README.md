@@ -1,10 +1,9 @@
-# Welcome to the aurorachat repository #
-
-This is the server for Aurorachat.  
+<h1 align="center">Welcome to the aurorachat repository </h1>
+This is the server for Aurorachat.<br>
 For clients and stuff, see the [main repo](https://github.com/Unitendo/aurorachat).  
 The license, code of conduct, and security/contributing guidelines in the main repo also apply here.
 
-This repository is **open** for contributions! If you'd like to, you may open a PR or an issue, contributing helps us as we develop aurorachat!
+<br>This repository is **open** for contributions! If you'd like to, you may open a PR or an issue, contributing helps us as we develop aurorachat!
 
 ## How to Run the Server ##
 
