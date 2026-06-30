@@ -818,6 +818,14 @@ app.post('/admin/userinfo', async (req, res) => {
     <a href="/admin">Go back</a>
     `);
 });
+app.post('/api/isadmin', async (req, res) => {
+  const {username} = req.body;
+  
+  const users = readUsers();
+  const user = users.users.find(user => user.username === username);
+
+  return res.send(`${user.admin}`);
+});
 
 app.get('/admin/userswithip', async (req, res) => {
   if (!req.session.admin) {
