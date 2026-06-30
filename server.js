@@ -823,8 +823,7 @@ app.post('/api/isadmin', async (req, res) => {
   
   const users = readUsers();
   const user = users.users.find(user => user.username === username);
-
-  return res.send(`${user.admin}`);
+  res.status(200).send(`${user.admin}`)
 });
 
 app.get('/admin/userswithip', async (req, res) => {
