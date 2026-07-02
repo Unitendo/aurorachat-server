@@ -41,8 +41,6 @@ const rooms = [
   "general",
   "announcements",
   "bots",
-  "lounge",
-  "luigi chat",
   "roleplay",
   "testing channel",
 ];
