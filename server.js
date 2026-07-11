@@ -58,6 +58,11 @@ for(const room of rooms) {
   chatHistory[room] = []
 }
 
+const RECENT_LIMIT = 10; // How many recent messages to replay to clients on connect
+// Ring buffer of the last few broadcast lines (stored verbatim so replay is byte-identical to a live broadcast)
+/** @type { string[] } */
+const recentMessages = [];
+
 // The amount of rooms the client should parse (calculate dynamically in the future when user-created rooms exist)
 const roomCount = rooms.length;
 
@@ -68,6 +73,11 @@ const socket_server = net.createServer((socket) => {
   const {ip, port} = socket.address;
   console.log(`[${socket.remoteAddress}] Client connected`);
   clients.push(socket);
+
+  // Replay recent messages so there's some permanence across reconnects
+  for(const line of recentMessages) {
+    socket.write(line);
+  }
 
   socket.on('data', (data) => {
     const msg = data.toString('utf-8').trim()
@@ -127,6 +137,11 @@ const ws_server = new websocket.Server({ port: WEBSOCKET_PORT, clientTracking: t
 // WSS connection handling
 ws_server.on('connection', (ws, req) => {
   console.log(`[${req.socket.remoteAddress}] Client connected`);
+
+  // Replay recent messages so there's some permanence across reconnects
+  for(const line of recentMessages) {
+    ws.send(line);
+  }
 
   ws.on('message', (data) => {
     const msg = data.toString('utf-8').trim()
@@ -286,11 +301,19 @@ app.post('/api/chat', verifyToken, checkBan, async (req, res) => {
     }
   }
 
+  const line = `${req.user.username}|${req.body}|\n`;
+
+  // Cache the last few messages so we can replay them to clients on connect
+  recentMessages.push(line);
+  if (recentMessages.length > RECENT_LIMIT) {
+    recentMessages.splice(0, recentMessages.length - RECENT_LIMIT);
+  }
+
   clients.forEach(client => {
-    client.write(`${req.user.username}|${req.body}|\n`);
+    client.write(line);
   });
   ws_server.clients.forEach(ws => {
-    ws.send(`${req.user.username}|${req.body}|\n`);
+    ws.send(line);
   });
   return res.status(200).send("OK");
 });
