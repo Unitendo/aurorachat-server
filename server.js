@@ -7,6 +7,7 @@ const jwt = require('jsonwebtoken'); // JSON Web Token, used for authentication 
 const path = require('path'); // Wait, what?
 const fs = require('fs'); // Filesystem actions
 const websocket = require('ws'); // WebSocket server, for the web client
+const crypto = require('crypto'); // to generate the encryption key
 
 const { 
   TOKEN_SECRET, SESSION_SECRET,
@@ -14,7 +15,7 @@ const {
 } = config
 
 const app = express(); // Create the actual server (the express one anyway)
-app.use(express.text()); // Make sure to accept raw text because JSON parsing in base C is hell
+// this is moved
 const USERS_FILE = path.join(__dirname, 'users.json');
 
 // Read the users file
@@ -44,6 +45,61 @@ const HISTORY_LIMIT = 100; // Easily changeable if moments pass. Shattered glass
  * @type { Object.<string,{ username: string, message: string }[]> }
  */
 const chatHistory = {};
+
+// generating the servers encryption keys
+const server = crypto.generateKeyPairSync('x25519', {
+  publicKeyEncoding: { type: 'spki', format: 'pem' },
+  privateKeyEncoding: { type: 'pkcs8', format: 'pem' }
+});
+
+// function to decypt
+function decypt(enc_msg, clientKey) {
+  const [ivHex, authTagHex, encryptedHex] = enc_msg.split(':');
+  const sharedSecret = crypto.diffieHellman({
+    privateKey: crypto.createPrivateKey(server.privateKey),
+    publicKey: crypto.createPublicKey(clientKey)
+  });
+  const iv = Buffer.from(ivHex, 'hex');
+  const decipher = crypto.createDecipheriv('aes-256-gcm', sharedSecret, iv);
+  decipher.setAuthTag(Buffer.from(authTagHex, 'hex'));
+  let decrypted = decipher.update(encryptedHex, 'hex', 'utf8');
+  decrypted += decipher.final('utf8');
+  return decrypted;
+}
+
+// function to encrypt
+function encrypt(text, clientKey) {
+  const sharedSecret = crypto.diffieHellman({
+    privateKey: crypto.createPrivateKey(server.privateKey),
+    publicKey: crypto.createPublicKey(clientKey)
+  });
+  if (!clientKey) {
+    console.log("someone tried to crash the server (or they're just dumb)");
+    return text; 
+  }
+  const iv = crypto.randomBytes(12);
+  const cipher = crypto.createCipheriv('aes-256-gcm', sharedSecret, iv);
+  let encrypted = cipher.update(text, 'utf8', 'hex');
+  encrypted += cipher.final('hex');
+  const authTag = cipher.getAuthTag().toString('hex');
+  return `${iv.toString('hex')}:${authTag}:${encrypted}`;
+}
+
+// where we store the client keys
+const clientKeys = {};
+
+// redefining res.send
+app.use((req, res, next) => {
+  const originalSend = res.send;
+  res.send = function (body) {
+    let modifiedBody = encrypt(body, clientKeys.req.ip);
+    if (typeof body === 'string' || Buffer.isBuffer(body)) {
+    }
+    return originalSend.apply(this, [modifiedBody]);
+  };
+  next();
+})
+app.use(express.text()); // Make sure to accept raw text because JSON parsing in base C is hell
 
 // Initialize an empty history array for every single room
 for(const room of rooms) {
@@ -100,7 +156,13 @@ const socket_server = net.createServer((socket) => {
       if(limit && message.length > limit) {
         message = message.substring(message.length - limit, message.length)
       }
-      socket.write(message)
+      if (!clientKeys[socket.remoteAddress]) {
+        console.log("someone tried to crash the server (or they're just dumb)");
+        socket.write(message);
+        return
+      }
+      const encryptedMsg = encrypt(message, clientKeys[socket.remoteAddress]);
+      socket.write(encryptedMsg);
       console.log(`${socket.remoteAddress} requested message history`)
       return
     }
@@ -164,7 +226,13 @@ ws_server.on('connection', (ws, req) => {
       if(limit && message.length > limit) {
         message = message.substring(message.length - limit, message.length)
       }
-      ws.send(message)
+      if (!clientKeys[req.socket.remoteAddress]) {
+        console.log("someone tried to crash the server (or they're just dumb)");
+        ws.send(message);
+        return
+      }
+      const encryptedMsg = encrypt(message, clientKeys[req.socket.remoteAddress]);
+      ws.send(encryptedMsg);
       console.log(`${req.socket.remoteAddress} requested message history`)
       return
     }
@@ -187,7 +255,7 @@ function verifyToken(req, res, next) {
 
   if (!token) {
     console.log(`[${req.ip}]: Error: Invalid Token.`);
-    return res.send("ERR_INVALID_TOKEN");
+    return res.status(400).send("ERR_INVALID_TOKEN");
   }
 
   try {
@@ -196,7 +264,7 @@ function verifyToken(req, res, next) {
     next();
   } catch (err) {
     console.log(`AHHHH OH HELP OH MY GOODNESS AHHHH ${err}`);
-    return res.send("ERR_WHAT_THE_HECK");
+    return res.status(500).send("ERR_WHAT_THE_HECK");
   }
 }
 
@@ -208,7 +276,7 @@ function checkBan(req, res, next) {
     if (user.banned == true) {
       console.log(`Banned user attempted access: ${user.username}`);
       const reason = user.banReason || "No reason specified";
-      return res.send(`ERR_BANNED|${reason}|`);
+      return res.status(403).send(`ERR_BANNED|${reason}|`);
     } else {
       next();
     }
@@ -216,6 +284,25 @@ function checkBan(req, res, next) {
     next();
   }
 }
+
+/*
+extanging encrytion keys
+content should be the clients public encryption key
+*/
+app.post('/api/key', checkBan, (req, res) => {
+  res.set('Content-Type', 'text/plain');
+  const ip = req.ip;
+  if (!ip in clientKeys) {
+    const key = req.body;
+    clientKeys[ip] = key;
+    res.status(200)
+    res.originalSend.call(res, server.publicKey);
+    console.log("Client conected");
+  } else {
+    res.status(409);
+    res.originalSend.call(res, "ALREADY CONNECTED");
+  }
+});
 
 // web version
 app.use('/web', express.static('web'));
@@ -244,12 +331,14 @@ message|room|
 Make CERTAIN it ends with a |, otherwise it'll get messy sometimes.
 */
 app.post('/api/chat', verifyToken, checkBan, async (req, res) => {
-  const splittered = req.body.split("|");
+  const ip = req.ip;
+  const decBody = decrypt(res.body, clientKeys.ip);
+  const splittered = decBody.split("|");
   if (!splittered[1] || !splittered[0]) {
-    return res.status(200).send("ERR_MISSING_FIELD");
+    return res.status(406).send("ERR_MISSING_FIELD");
   }
   if (!rooms.includes(splittered[1])) {
-    return res.status(200).send("ERR_FAKE_ROOM_YOU_MORON");
+    return res.status(404).send("ERR_FAKE_ROOM_YOU_MORON");
   }
   if (splittered[1] == "announcements") {
     console.log("Message in announcements:");
@@ -258,7 +347,7 @@ app.post('/api/chat', verifyToken, checkBan, async (req, res) => {
     if (user) {
       if (user.admin == false) {
         console.log("Not enough rights");
-        return res.send("ERR_NO_RIGHTS");
+        return res.status(403).send("ERR_NO_RIGHTS");
       }
     }
   }
@@ -267,14 +356,14 @@ app.post('/api/chat', verifyToken, checkBan, async (req, res) => {
   if (user2) {
     if (user2.banned) {
       const reason = user2.banReason || "No reason specified";
-      return res.status(200).send(`ERR_BANNED|${reason}|`);
+      return res.status(403).send(`ERR_BANNED|${reason}|`);
     }
     if (user2.muted) {
       console.log(`Muted user ${req.user.username} tried to chat.`);
-      return res.status(200).send("ERR_MUTED");
+      return res.status(403).send("ERR_MUTED");
     }
   } else {
-    return res.status(200).send("ERR_FAKE_USER");
+    return res.status(404).send("ERR_FAKE_USER");
   }
   console.log(`[${req.ip}] ${req.user.username}: ${req.body.split('|')[0]}`);
   console.log(`recieved:`,req.body);
@@ -320,19 +409,21 @@ username|password|
 
 */
 app.post('/api/signup', checkBan, async (req, res) => {
-  const splitten = req.body.split("|");
+  const ip = req.ip;
+  const decBody = decrypt(res.body, clientKeys.ip);
+  const splitten = decBody.split("|");
   const username = splitten[0];
   const password = splitten[1];
 
   if (!username || !password) {
     console.log("Signup: missing fields");
-    return res.send("ERR_MISSING_INPUT");
+    return res.status(406).send("ERR_MISSING_INPUT");
   }
 
   const users = readUsers();
   if (users.users.find(user => user.username === username)) {
     console.log("Signup: account already in use");
-    return res.send("ERR_USER_USED");
+    return res.status(409).send("ERR_USER_USED");
   }
 
   const hashedPassword = await bcrypt.hash(password, 10);
@@ -353,7 +444,9 @@ username|password|
 
 */
 app.post('/api/login', checkBan, async (req, res) => {
-  const splitten = req.body.split("|");
+  const ip = req.ip;
+  const decBody = decrypt(res.body, clientKeys.ip);
+  const splitten = decBody.split("|");
   const username = splitten[0];
   const password = splitten[1];
 
@@ -361,16 +454,16 @@ app.post('/api/login', checkBan, async (req, res) => {
   const user = users.users.find(user => user.username === username);
   if (!user || !(await bcrypt.compare(password, user.password))) {
     console.log("Wrong password");
-    return res.send("ERR_WRONG_PASS");
+    return res.status(401).send("ERR_WRONG_PASS");
   }
 
   if (user) {
     if (user.banned) {
       const reason = user.banReason || "No reason specified";
-      return res.status(200).send(`ERR_BANNED|${reason}|\n`);
+      return res.status(403).send(`ERR_BANNED|${reason}|\n`);
     }
   } else {
-    return res.status(200).send("ERR_FAKE_USER");
+    return res.status(404).send("ERR_FAKE_USER");
   }
 
   const token = jwt.sign({ id: user.id, username }, TOKEN_SECRET, { expiresIn: '1h' });
@@ -392,7 +485,7 @@ app.get('/api/rules', async (req, res) => {
       if (err) {
           console.error(err);
           if (!res.headersSent) {
-              res.status(404).send('* If you are reading this,&  I messed up somehow./%');
+              res.status(500).send('* If you are reading this,&  I messed up somehow./%');
           }
       }
   });
@@ -403,7 +496,7 @@ app.get('/api/faq', async (req, res) => {
     if (err) {
       console.error(err);
       if (!res.headersSent) {
-        res.status(404).send('* If you are reading this,&  I messed up somehow./%');
+        res.status(500).send('* If you are reading this,&  I messed up somehow./%');
       }
     }
   });
@@ -414,7 +507,7 @@ app.get('/api/changelog', async (req, res) => {
     if (err) {
       console.error(err);
       if (!res.headersSent) {
-        res.status(404).send('* If you are reading this,&  I messed up somehow./%');
+        res.status(500).send('* If you are reading this,&  I messed up somehow./%');
       }
     }
   });
@@ -423,11 +516,11 @@ app.get('/api/changelog', async (req, res) => {
 app.post('/api/online', async (req, res) => {
   room = req.body;
   // get online count for room, currently placeholder
-  res.status(200).send("?")
+  res.status(501).send("?")
 })
 
 app.get('/admin/login', async (req, res) => {
-  res.send(`
+  res.originalSend.call(res, `
     <form method="POST">
         <input name="username" placeholder="Username" required />
         <input name="password" type="password" placeholder="Password" required />
@@ -441,11 +534,13 @@ app.post('/admin/login', async (req, res) => {
   const user = users.admins.find(user => user.username === username);
   if (!user || !(await bcrypt.compare(password, user.password))) {
     console.log("Wrong password");
-    return res.status(403).send(`<p><a href="https://www.youtube.com/watch?v=dWX8Kafsc3c">Wrong password.</a></p><a href='/admin/login'>Go back</a>`);
+    res.status(403)
+    return res.originalSend.call(res, `<p><a href="https://www.youtube.com/watch?v=dWX8Kafsc3c">Wrong password.</a></p><a href='/admin/login'>Go back</a>`);
   }
 
   if (!user) {
-    return res.status(403).send(`<p><a href="https://www.youtube.com/watch?v=dWX8Kafsc3c">Wrong password.</a></p><a href='/admin/login'>Go back</a>`);
+    res.status(403)
+    return res.originalSend.call(res, `<p><a href="https://www.youtube.com/watch?v=dWX8Kafsc3c">Wrong password.</a></p><a href='/admin/login'>Go back</a>`);
   }
 
   req.session.admin = true;
@@ -460,7 +555,7 @@ app.get('/admin', async (req, res) => {
   if (!req.session.admin) {
     return res.redirect("/admin/login");
   }
-  res.send(`
+  res.originalSend.call(res, `
     <html>
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -498,7 +593,7 @@ app.get('/admin/ban', async (req, res) => {
   if (!req.session.admin) {
     return res.redirect("/admin/login");
   }
-  return res.send(`
+  return res.originalSend.call(res, `
     <html>
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -536,7 +631,7 @@ app.post('/admin/ban', async (req, res) => {
   }
   writeUsers(users);
 
-  return res.send(`
+  return res.originalSend.call(res, `
     <p>User banned!</p>
     <p>Reason: ${reason || "No reason specified"}</p>
     <a href="/admin">Go back</a>
@@ -546,7 +641,7 @@ app.get('/admin/unban', async (req, res) => {
   if (!req.session.admin) {
     return res.redirect("/admin/login");
   }
-  return res.send(`
+  return res.originalSend.call(res, `
     <html>
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -583,7 +678,7 @@ app.post('/admin/unban', async (req, res) => {
   }
   writeUsers(users);
 
-  return res.send(`
+  return res.originalSend.call(res, `
     <p>User unbanned!</p>
     <a href="/admin">Go back</a>
     `);
@@ -593,7 +688,7 @@ app.get('/admin/delete', async (req, res) => {
   if (!req.session.admin) {
     return res.redirect("/admin/login");
   }
-  return res.send(`
+  return res.originalSend.call(res, `
     <html>
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -626,7 +721,7 @@ app.post('/admin/delete', async (req, res) => {
   users.users = users.users.filter(user => user.username !== username);
   writeUsers(users);
 
-  return res.send(`
+  return res.originalSend.call(res, `
     <p>User deleted!</p>
     <a href="/admin">Go back</a>
     `);
@@ -635,7 +730,7 @@ app.get('/admin/mute', async (req, res) => {
   if (!req.session.admin) {
     return res.redirect("/admin/login");
   }
-  return res.send(`
+  return res.originalSend.call(res, `
     <html>
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -673,7 +768,7 @@ app.post('/admin/mute', async (req, res) => {
     writeUsers(users);
   }
 
-  return res.send(`
+  return res.originalSend.call(res, `
     <p>User Where... Where am I? Hello...? Anyone...? Is... is anybody out there...? Someone!? Anyone!? Can anyone hear me!? ... It's dark. It's so dark here. Someone, anyone, if you can hear me... Say something... please...</p>
     <a href="/admin">Go back</a>
     `);
@@ -682,7 +777,7 @@ app.get('/admin/unmute', async (req, res) => {
   if (!req.session.admin) {
     return res.redirect("/admin/login");
   }
-  return res.send(`
+  return res.originalSend.call(res, `
     <html>
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -720,7 +815,7 @@ app.post('/admin/unmute', async (req, res) => {
   }
 
 
-  return res.send(`
+  return res.originalSend.call(res, `
     <p>User unmuted!</p>
     <a href="/admin">Go back</a>
     `);
@@ -730,7 +825,7 @@ app.get('/admin/createAccount', async (req, res) => {
   if (!req.session.admin) {
     return res.redirect("/admin/login");
   }
-  return res.send(`
+  return res.originalSend.call(res, `
     <html>
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -766,7 +861,8 @@ app.post('/admin/createAccount', async (req, res) => {
   const users = readUsers();
   if (users.users.find(user => user.username === username)) {
     console.log("Signup: account already in use");
-    return res.status(409).send("ERR_USER_USED");
+    res.status(409)
+    return res.originalSend.call(res, "ERR_USER_USED");
   }
 
   var hashedPassword;
@@ -775,7 +871,7 @@ app.post('/admin/createAccount', async (req, res) => {
   } else if (!password) {
     hashedPassword = passwordHash
   } else {
-      return res.send(`
+      return res.originalSend.call(res, `
         <p>You need to at least include a password or a password hash.</p>
         <a href="/admin">Go back</a>
         `);
@@ -785,7 +881,7 @@ app.post('/admin/createAccount', async (req, res) => {
   users.users.push(newUser);
   writeUsers(users);
 
-  return res.send(`
+  res.originalSend.call(res, `
     <p>User created!</p>
     <a href="/admin">Go back</a>
     `);
@@ -795,7 +891,7 @@ app.get('/admin/userinfo', async (req, res) => {
   if (!req.session.admin) {
     return res.redirect("/admin/login");
   }
-  return res.send(`
+  return res.originalSend.call(res, `
     <html>
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -828,7 +924,7 @@ app.post('/admin/userinfo', async (req, res) => {
   const users = readUsers();
   const user = users.users.find(user => user.username === username);
 
-  return res.send(`
+  return res.originalSend.call(res, `
     <p>Username: ${user.username}<br>Password Hash: ${user.password}<br>ID: ${user.id}<br>Banned: ${user.banned}<br>Ban Reason: ${user.banReason || "None"}<br>Muted: ${user.muted}<br>IP: <a href="#" onclick="return postName(this)">${user.ip}</a></p>
     <a href="/admin">Go back</a>
     <script>
@@ -867,7 +963,7 @@ app.get('/admin/userswithip', async (req, res) => {
   if (!req.session.admin) {
     return res.redirect("/admin/login");
   }
-  return res.send(`
+  return res.originalSend.call(res, `
     <html>
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -901,7 +997,7 @@ app.post('/admin/userswithip', async (req, res) => {
   const matches = users.filter(item => item.ip === ip).map(item => item.username);
   const usernamesHtml = matches.map(username => `<a href="#" onclick="return postName(this)"><p>${username}</p></a>`).join("\n");
 
-  return res.send(`
+  return res.originalSend.call(res, `
     ${usernamesHtml}
     <a href="/admin">Go back</a>
     <script>
@@ -932,7 +1028,7 @@ app.get('/admin/changebanreason', async (req, res) => {
   if (!req.session.admin) {
     return res.redirect("/admin/login");
   }
-  return res.send(`
+  return res.originalSend.call(res, `
     <html>
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -969,7 +1065,7 @@ app.post('/admin/changebanreason', async (req, res) => {
   }
   writeUsers(users);
 
-  return res.send(`
+  return res.originalSend.call(res, `
     <p>Changed user ban reason!</p>
     <p>Reason: ${reason || "No reason specified"}</p>
     <a href="/admin">Go back</a>
