@@ -37,15 +37,7 @@ function writeUsers(data) {
 }
 
 // Array that manages the rooms
-const rooms = [
-  "general",
-  "announcements",
-  "bots",
-  "roleplay",
-  "testing channel",
-  "Bro_POTTER12's gambling cave",
-  "my time channel for cool guy to sing my time",
-];
+const rooms = config.ROOMS
 
 const HISTORY_LIMIT = 100; // Easily changeable if moments pass. Shattered glass? Hands of time. Where's that chime?!
 /**
