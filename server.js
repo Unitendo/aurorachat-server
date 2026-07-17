@@ -7,7 +7,7 @@ const jwt = require('jsonwebtoken'); // JSON Web Token, used for authentication 
 const path = require('path'); // Wait, what?
 const fs = require('fs'); // Filesystem actions
 const websocket = require('ws'); // WebSocket server, for the web client
-
+const { RegExpMatcher, TextCensor, englishDataset, englishRecommendedTransformers } = require('obscenity'); // Please read the channel description.
 const { 
   TOKEN_SECRET, SESSION_SECRET,
   HTTP_PORT, SOCKET_PORT, WEBSOCKET_PORT
@@ -292,9 +292,11 @@ app.post('/api/chat', verifyToken, checkBan, async (req, res) => {
       chatHistory[currentRoom].splice(0, chatHistory[currentRoom].length - HISTORY_LIMIT)
     }
   }
-
-  const line = `${req.user.username}|${req.body}|\n`;
-
+  const matcher = new RegExpMatcher({ ...englishDataset.build(), ...englishRecommendedTransformers });
+  const censor = new TextCensor();
+  const matches = matcher.getAllMatches(text);
+  censor.applyTo(text, matches)
+  const line = censor.applyTo(`${req.user.username}|${req.body}|\n`, matches);
   // Cache the last few messages so we can replay them to clients on connect
   recentMessages.push(line);
   if (recentMessages.length > RECENT_LIMIT) {
