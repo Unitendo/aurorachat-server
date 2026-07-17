@@ -295,7 +295,6 @@ app.post('/api/chat', verifyToken, checkBan, async (req, res) => {
   const matcher = new RegExpMatcher({ ...englishDataset.build(), ...englishRecommendedTransformers });
   const censor = new TextCensor();
   const matches = matcher.getAllMatches(text);
-  censor.applyTo(text, matches)
   const line = censor.applyTo(`${req.user.username}|${req.body}|\n`, matches);
   // Cache the last few messages so we can replay them to clients on connect
   recentMessages.push(line);
