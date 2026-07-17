@@ -24,7 +24,7 @@
     "express": "^5.2.1",
     "express-session": "^1.19.0",
     "jsonwebtoken": "^9.0.3",
-    "ws": "^8.21.0"
+    "ws": "^8.21.0",
     "obscenity": "^0.4.6"
   },
   "nodemonConfig": {
