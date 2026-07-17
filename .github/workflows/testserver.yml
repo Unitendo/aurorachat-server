@@ -21,7 +21,7 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies
-        run: npm ci
+        run: npm install && npm ci
       - name: Set up config
         run: cp config.example.js config.js
       - name: Start app and check for crashes
