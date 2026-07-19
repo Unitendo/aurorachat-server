@@ -7,6 +7,7 @@ const jwt = require('jsonwebtoken'); // JSON Web Token, used for authentication 
 const path = require('path'); // Wait, what?
 const fs = require('fs'); // Filesystem actions
 const websocket = require('ws'); // WebSocket server, for the web client
+const cors = require('cors'); //Kill all CORS users.
 const { RegExpMatcher, TextCensor, englishDataset, englishRecommendedTransformers } = require('obscenity'); // Please read the channel description.
 const { 
   TOKEN_SECRET, SESSION_SECRET,
@@ -15,6 +16,11 @@ const {
 
 const app = express(); // Create the actual server (the express one anyway)
 app.use(express.text()); // Make sure to accept raw text because JSON parsing in base C is hell
+app.use(cors({
+  origin: '*',
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'auth'] // Make sure your custom 'auth' header is whitelisted!
+}));
 const USERS_FILE = path.join(__dirname, 'users.json');
 
 // Read the users file
