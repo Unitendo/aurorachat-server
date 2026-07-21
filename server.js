@@ -14,6 +14,7 @@ const {
   HTTP_PORT, SOCKET_PORT, WEBSOCKET_PORT
 } = config
 const userMessageTimes = {};
+const userRecentMessages = {};
 const app = express(); // Create the actual server (the express one anyway)
 app.use(express.text()); // Make sure to accept raw text because JSON parsing in base C is hell
 app.use(cors({
@@ -284,6 +285,7 @@ app.post('/api/chat', verifyToken, checkBan, async (req, res) => {
   }
   const username = req.user.username;
   const now = Date.now();
+  const currentMsg = req.body.split('|')[0];
   if (!username == "auroracross") {
     // Initialize tracking array for new users
     if (!userMessageTimes[username]) {
@@ -303,7 +305,38 @@ app.post('/api/chat', verifyToken, checkBan, async (req, res) => {
       return res.status(200).send("ERR_MUTED");
     }
     userMessageTimes[username].push(now);
+    if (!userRecentMessages[username]) {
+      userRecentMessages[username] = [];
+    }
+
+    // Push the incoming message text
+    userRecentMessages[username].push(currentMsg);
+
+    // Keep only the last 5 messages in memory for this user
+    if (userRecentMessages[username].length > 5) {
+      userRecentMessages[username].shift();
+    }
+
+    // Check if all 5 entries in the buffer are identical
+    const isDuplicateSpam = 
+      userRecentMessages[username].length === 5 && 
+      userRecentMessages[username].every(msg => msg === currentMsg);
+
+    if (isDuplicateSpam) {
+      console.log(`Murdered ${username} for spamming. (Beta Mix)`);
+    
+      // Mute the user
+      user2.muted = true;
+      writeUsers(users2);
+
+      // Clear tracking memory for this user
+      delete userRecentMessages[username];
+      if (userMessageTimes[username]) delete userMessageTimes[username];
+
+      return res.status(200).send("ERR_MUTED");
+    }
   }
+  
   console.log(`[${req.ip}] ${req.user.username}: ${req.body.split('|')[0]}`);
   console.log(`recieved:`,req.body);
   const currentRoom = splittered[1];
