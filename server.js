@@ -302,8 +302,8 @@ app.post('/api/chat', verifyToken, checkBan, async (req, res) => {
 
       return res.status(200).send("ERR_MUTED");
     }
+    userMessageTimes[username].push(now);
   }
-  userMessageTimes[username].push(now);
   console.log(`[${req.ip}] ${req.user.username}: ${req.body.split('|')[0]}`);
   console.log(`recieved:`,req.body);
   const currentRoom = splittered[1];
