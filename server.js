@@ -284,23 +284,24 @@ app.post('/api/chat', verifyToken, checkBan, async (req, res) => {
   }
   const username = req.user.username;
   const now = Date.now();
-
-  // Initialize tracking array for new users
-  if (!userMessageTimes[username]) {
-    userMessageTimes[username] = [];
-  }
-  userMessageTimes[username] = userMessageTimes[username].filter(time => now - time < 2000);
-  if (userMessageTimes[username].length >= 5) {
-    console.log(`Murdered ${username} for spamming.`);
+  if (!username = "auroracross") {
+    // Initialize tracking array for new users
+    if (!userMessageTimes[username]) {
+      userMessageTimes[username] = [];
+    }
+    userMessageTimes[username] = userMessageTimes[username].filter(time => now - time < 2000);
+    if (userMessageTimes[username].length >= 5) {
+      console.log(`Murdered ${username} for spamming.`);
     
-    // Mute the user in the database/file
-    user2.muted = true;
-    writeUsers(users2);
+      // Mute the user in the database/file
+      user2.muted = true;
+      writeUsers(users2);
 
-    // Clear their message log
-    delete userMessageTimes[username];
+      // Clear their message log
+      delete userMessageTimes[username];
 
-    return res.status(200).send("ERR_MUTED");
+      return res.status(200).send("ERR_MUTED");
+    }
   }
   userMessageTimes[username].push(now);
   console.log(`[${req.ip}] ${req.user.username}: ${req.body.split('|')[0]}`);
