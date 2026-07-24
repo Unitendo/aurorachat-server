@@ -15,6 +15,8 @@ const {
 } = config
 const userMessageTimes = {};
 const userRecentMessages = {};
+const userLastMessageTime = {}; // Per-user cooldown tracking
+const COOLDOWN_MS = 5000; // 5 second cooldown between messages
 const app = express(); // Create the actual server (the express one anyway)
 app.use(express.text()); // Make sure to accept raw text because JSON parsing in base C is hell
 app.use(cors({
@@ -28,13 +30,16 @@ const USERS_FILE = path.join(__dirname, 'users.json');
 function readUsers() {
   try {
     if (!fs.existsSync(USERS_FILE)) {
-      return { users: [], admins: [] };
+      return { users: [], admins: [], bannedIps: [] };
     }
     const data = fs.readFileSync(USERS_FILE);
-    return JSON.parse(data);
+    const parsed = JSON.parse(data);
+    // Backwards compatible w/ old users.json files that predate IP bans
+    if (!parsed.bannedIps) parsed.bannedIps = [];
+    return parsed;
   } catch (err) {
     console.error("Failed to read users.json:", err);
-    return { users: [], admins: [] };
+    return { users: [], admins: [], bannedIps: [] };
   }
 }
 
@@ -70,6 +75,14 @@ const clients = [];
 
 const socket_server = net.createServer((socket) => {
   const {ip, port} = socket.address;
+
+  const ipBan = readUsers().bannedIps.find(b => b.ip === socket.remoteAddress);
+  if (ipBan) {
+    console.log(`[${socket.remoteAddress}] IP-banned connection rejected`);
+    socket.end(`ERR_IP_BANNED|${ipBan.reason || "No reason specified"}|\n`);
+    return;
+  }
+
   console.log(`[${socket.remoteAddress}] Client connected`);
   clients.push(socket);
 
@@ -135,6 +148,14 @@ const ws_server = new websocket.Server({ port: WEBSOCKET_PORT, clientTracking: t
 });
 // WSS connection handling
 ws_server.on('connection', (ws, req) => {
+  const ipBan = readUsers().bannedIps.find(b => b.ip === req.socket.remoteAddress);
+  if (ipBan) {
+    console.log(`[${req.socket.remoteAddress}] IP-banned connection rejected`);
+    ws.send(`ERR_IP_BANNED|${ipBan.reason || "No reason specified"}|\n`);
+    ws.close();
+    return;
+  }
+
   console.log(`[${req.socket.remoteAddress}] Client connected`);
 
   // Replay recent messages so there's some permanence across reconnects
@@ -210,6 +231,15 @@ function verifyToken(req, res, next) {
 // Check if an IP is banned
 function checkBan(req, res, next) {
   const users = readUsers();
+
+  // Straight IP ban - blocks the address regardless of which account (if any) is attached
+  const ipBan = users.bannedIps.find(b => b.ip === req.ip);
+  if (ipBan) {
+    console.log(`IP-banned address attempted access: ${req.ip}`);
+    const reason = ipBan.reason || "No reason specified";
+    return res.send(`ERR_IP_BANNED|${reason}|`);
+  }
+
   const user = users.users.find(user => user.ip === req.ip);
   if (user) {
     if (user.banned == true) {
@@ -286,6 +316,18 @@ app.post('/api/chat', verifyToken, checkBan, async (req, res) => {
   const username = req.user.username;
   const now = Date.now();
   const currentMsg = req.body.split('|')[0];
+
+  // 5 second cooldown between messages, per user
+  if (username !== "auroracross") {
+    const lastMsgTime = userLastMessageTime[username] || 0;
+    const sinceLast = now - lastMsgTime;
+    if (sinceLast < COOLDOWN_MS) {
+      const remaining = ((COOLDOWN_MS - sinceLast) / 1000).toFixed(1);
+      return res.status(200).send(`ERR_COOLDOWN|${remaining}|`);
+    }
+    userLastMessageTime[username] = now;
+  }
+
   if (!username == "auroracross") {
     // Initialize tracking array for new users
     if (!userMessageTimes[username]) {
@@ -546,14 +588,17 @@ app.get('/admin', async (req, res) => {
         <a style='color: red;' href='/admin/mute'>Mute User</a><br>
         <a style='color: red;' href='/admin/ban'>Ban User</a><br>
         <a style='color: red;' href='/admin/delete'>Delete User</a><br>
+        <a style='color: darkred;' href='/admin/banip'>Ban IP</a><br>
         <h2>User Positive Actions</h2>
         <a style='color: green;' href='/admin/createAccount'>Create Account</a><br>
         <a style='color: #33351c;' href='/admin/unmute'>Unmute User</a><br>
         <a style='color: #e79b0d;' href='/admin/unban'>Unban User</a><br>
+        <a style='color: #e79b0d;' href='/admin/unbanip'>Unban IP</a><br>
         <h2>Miscellaneous</h2>
         <a style='color: blue;' href='/admin/userinfo'>Check User Information</a><br>
         <a style='color: blue;' href='/admin/userswithip'>Check Users with IP</a><br>
         <a style='color: green;' href='/admin/changebanreason'>Change User Ban Reason</a><br>
+        <a style='color: blue;' href='/admin/bannedips'>View Banned IPs</a><br>
       </body>
     </html>
   `);
@@ -652,6 +697,137 @@ app.post('/admin/unban', async (req, res) => {
     <p>User unbanned!</p>
     <a href="/admin">Go back</a>
     `);
+});
+
+app.get('/admin/banip', async (req, res) => {
+  if (!req.session.admin) {
+    return res.redirect("/admin/login");
+  }
+  return res.send(`
+    <html>
+      <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,100..900;1,100..900&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+
+        <style>
+          h1, p, h2, a {
+            font-family: 'Roboto', Arial, sans-serif;
+          }
+        </style>
+      </head>
+      <body>
+      <h1>IP Ban</h1>
+      <form method="POST">
+        <input name="ip" placeholder="IP to ban" required /><br><br>
+        <input name="reason" placeholder="Reason for ban" style="width: 300px;" /><br><br>
+        <button type="submit">Ban IP</button>
+    </form>
+    </body>
+    </html>
+  `);
+});
+
+app.post('/admin/banip', async (req, res) => {
+  if (!req.session.admin) {
+    return res.redirect("/admin/login");
+  }
+  const {ip, reason} = req.body;
+  if (!ip) {
+    return res.send(`
+      <p>You need to include an IP.</p>
+      <a href="/admin/banip">Go back</a>
+      `);
+  }
+  const users = readUsers();
+  const existing = users.bannedIps.find(b => b.ip === ip);
+  if (existing) {
+    existing.reason = reason || "No reason specified";
+  } else {
+    users.bannedIps.push({ ip, reason: reason || "No reason specified" });
+  }
+  writeUsers(users);
+
+  return res.send(`
+    <p>IP banned!</p>
+    <p>IP: ${ip}</p>
+    <p>Reason: ${reason || "No reason specified"}</p>
+    <a href="/admin">Go back</a>
+    `);
+});
+
+app.get('/admin/unbanip', async (req, res) => {
+  if (!req.session.admin) {
+    return res.redirect("/admin/login");
+  }
+  return res.send(`
+    <html>
+      <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,100..900;1,100..900&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+
+        <style>
+          h1, p, h2, a {
+            font-family: 'Roboto', Arial, sans-serif;
+          }
+        </style>
+      </head>
+      <body>
+      <h1>Unban IP</h1>
+      <form method="POST">
+        <input name="ip" placeholder="IP to unban" required /><br>
+        <button type="submit">Unban IP</button>
+    </form>
+    </body>
+    </html>
+  `);
+});
+
+app.post('/admin/unbanip', async (req, res) => {
+  if (!req.session.admin) {
+    return res.redirect("/admin/login");
+  }
+  const {ip} = req.body;
+  const users = readUsers();
+  users.bannedIps = users.bannedIps.filter(b => b.ip !== ip);
+  writeUsers(users);
+
+  return res.send(`
+    <p>IP unbanned!</p>
+    <a href="/admin">Go back</a>
+    `);
+});
+
+app.get('/admin/bannedips', async (req, res) => {
+  if (!req.session.admin) {
+    return res.redirect("/admin/login");
+  }
+  const users = readUsers();
+  const rowsHtml = users.bannedIps.length
+    ? users.bannedIps.map(b => `<p>${b.ip} &mdash; ${b.reason || "No reason specified"}</p>`).join("\n")
+    : "<p>No IPs currently banned.</p>";
+
+  return res.send(`
+    <html>
+      <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,100..900;1,100..900&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+
+        <style>
+          h1, p, h2, a {
+            font-family: 'Roboto', Arial, sans-serif;
+          }
+        </style>
+      </head>
+      <body>
+      <h1>Banned IPs</h1>
+      ${rowsHtml}
+      <a href="/admin">Go back</a>
+    </body>
+    </html>
+  `);
 });
 
 app.get('/admin/delete', async (req, res) => {
