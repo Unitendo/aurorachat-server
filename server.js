@@ -423,7 +423,7 @@ username|password|
 
 
 */
-app.post('/api/signup', checkBan, async (req, res) => {
+/*app.post('/api/signup', checkBan, async (req, res) => {
   const splitten = req.body.split("|");
   const username = splitten[0];
   const password = splitten[1];
@@ -452,6 +452,10 @@ app.post('/api/signup', checkBan, async (req, res) => {
   return res.status(200).send(`${token}`);
 });
 
+*/
+app.post('/api/signup', checkBan, async (req, res) => {
+  return res.send("Signups have been temporarily suspended.");
+}
 /*
 Account Login
 
