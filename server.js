@@ -427,7 +427,7 @@ username|password|
   const splitten = req.body.split("|");
   const username = splitten[0];
   const password = splitten[1];
-
+  
   if (!username || !password) {
     console.log("Signup: missing fields");
     return res.send("ERR_MISSING_INPUT");
@@ -441,7 +441,11 @@ username|password|
     console.log("Signup: account already in use");
     return res.send("ERR_USER_USED");
   }
-
+  const matcher = new RegExpMatcher({ ...englishDataset.build(), ...englishRecommendedTransformers });
+  if (matcher.hasMatch()) {
+	  console.log('Signup: Username has profanity');
+    return res.send("ERR_USER_BAD_USERNAME");
+  }
   const hashedPassword = await bcrypt.hash(password, 10);
   const newUser = { id: Date.now().toString(), username, password: hashedPassword, admin: false, ip: req.ip, banned: false, banReason: "", muted: false };
   users.users.push(newUser);
