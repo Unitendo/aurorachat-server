@@ -455,7 +455,7 @@ username|password|
 */
 app.post('/api/signup', checkBan, async (req, res) => {
   return res.send("Signups have been temporarily suspended.");
-}
+});
 /*
 Account Login
 
