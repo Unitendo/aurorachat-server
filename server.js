@@ -443,7 +443,7 @@ username|password|
   }
   const matcher = new RegExpMatcher({ ...englishDataset.build(), ...englishRecommendedTransformers });
   if (matcher.hasMatch()) {
-	  console.log('Signup: Username has profanity');
+	console.log('Signup: Username has profanity');
     return res.send("ERR_USER_BAD_USERNAME");
   }
   const hashedPassword = await bcrypt.hash(password, 10);
